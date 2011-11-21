@@ -1,0 +1,151 @@
+BODY {
+    background-color: #ffffff;
+    color: #000000;
+    font: 12px verdana,sans-serif;
+    margin: 0px auto;
+    width: 100%;
+}
+
+A {
+    color: #3300dd;
+    background-color: inherit;
+    text-decoration: none;
+}
+
+A:hover {
+    color: #3300dd;
+    background-color: inherit;
+    text-decoration: underline;
+}
+
+A:visited {
+    color: #3300dd;
+    background-color: inherit;
+}
+
+HR {
+    border: 1px solid #999999;
+    margin: 1px 0px 4px 0px;
+}
+
+#content {
+    padding: 0px;
+    width: 600px;
+    margin: 10px auto;
+}
+
+#title {
+    text-align: center;
+    font-weight: bold;
+    font-size: 24px;
+    font-family: sans-serif;
+    margin: 0px auto 10px auto;
+    width: 350px;
+}
+
+#login {
+    width: 300px;
+    margin: 0px auto;
+}
+
+#login .error {
+    text-align: center;
+    color: red;
+    font-weight: bold;
+    margin: 5px 0px;
+}
+
+#login div.boxes {
+    width: 215px;
+    margin: 0px auto;
+}
+
+#login .label {
+    float: left;
+    text-align: right;
+    width: 65px;
+    margin: 2px 0px;
+    padding: 0px 2px;
+}
+
+#login .input {
+    float: left;
+    text-align: left;
+    margin: 2px 0px;
+    padding: 0px;
+}
+
+#login input[type="text"] {
+    width: 140px;
+}
+
+#login input[type="password"] {
+    width: 140px;
+}
+
+#login input[type="submit"] {
+    margin: 4px;
+    width: 60px;
+}
+
+#profile {
+    width: 600px;
+    margin: 0px auto;
+}
+
+#profile div.username {
+    float: left;
+}
+
+#profile div.logout {
+    float: right;
+    text-align: right;
+}
+
+#profile div.clear {
+    clear: both;
+}
+
+#profile div.empty {
+    text-align: center;
+    margin-top: 20px;
+}
+
+#profile input[type="submit"] {
+    margin: 4px;
+    width: 60px;
+}
+
+#profile div.header {
+    font-weight: bold;
+    background: #cccccc;
+    padding: 2px 0px 2px 4px;
+}
+
+#profile div.row {
+    padding: 2px 0px 2px 0px;
+}
+
+#profile div.header > div, div.row > div {
+    margin: 0px;
+    padding: 0px;
+}
+
+#profile div.header > div.name, div.row > div.name {
+    float: left;
+}
+
+#profile div.row > div.logged {
+    margin-left: 25px;
+    float: left;
+}
+
+#profile div.row > div.accessed {
+    float: right;
+    width: 115px;
+}
+
+#profile div.row.highlight {
+    background: #ffff99;
+}
+

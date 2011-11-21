@@ -1,0 +1,10 @@
+# default information about the site
+url = pub.lockaby.org
+baseTZ = GMT
+siteTZ = America/New_York
+
+# database username/password
+db_username = pub
+db_password = password
+db_database = openid
+db_host = localhost

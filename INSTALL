@@ -1,0 +1,92 @@
+PREREQUISITES
+
+Server Software:
+  Apache 2.2 with mod_ssl enabled
+  mod_perl 2.0.5
+  libapreq2 2.13
+  MySQL 5.1
+
+Perl Modules:
+  Mime::Base64
+  Digest::MD5
+  DateTime
+  DBI
+  Apache::DBI
+  Apache::Session
+  Net::OpenID::Server 1.09
+  Net::OpenID::Common 1.14
+    - Prerequisites for Net::OpenID::Common include:
+        Crypt::DH::GMP 0.00009
+        IO::CaptureOutput 1.1102
+        Devel::CheckLib 0.93
+        XML::Parser
+        XML::Simple
+        libwww
+  URI::Escape
+  Storable
+
+
+CONFIGURING MYSQL
+
+1. Create a database and a user that can access the database:
+
+  mysql -u root -p
+  > create database openid;
+  > grant all on openid.* to openid_user'%';
+  > set password for openid_user@'%' = PASSWORD('newpass');
+  > flush privileges;
+  > exit;
+
+2. Run the file sql/mysql.sql to create the necessary tables in the database:
+
+  mysql -u openid_user -p --database=openid < sql/mysql.sql
+
+3. Create a user in the new application:
+
+  mysql -u openid_user -p --database=openid
+  > insert into users (username, password, created) values ('newuser', MD5('newpass'), NOW());
+  > exit;
+
+Obviously you should change 'newuser' to be the username that you want to use
+and 'newpass' to the password you want to use.
+
+
+CONFIGURING APACHE
+
+This program requires three things from Apache:
+  mod_perl enabled
+  mod_ssl enabled
+  libapreq2 enabled
+
+These will *usually* be enabled as shared libraries. If that is the case, you
+should see lines such as these in your Apache configuration file:
+
+  LoadModule perl_module            modules/mod_perl.so
+  LoadModule apreq_module           modules/mod_apreq2.so
+
+This OpenID server requires that you give it its own root host, something such
+as "http://id.example.com". This is because it will take over that host and
+disallow you from running other things on it.
+
+Configuring Apache is simple. Just take a look at the configuration example
+for Apache under configuration/httd.conf. Change the contents of that file as
+appropriate and copy its contents to your Apache configuration files.
+
+
+CONFIGURING OPENID
+
+Once you've done all that, modify the default OpenID configuration file,
+called "default" to fill in your database username and password and the
+hostname and timezone information.
+
+
+OTHER NOTES
+
+All users found in the database will have OpenID endpoints located here:
+
+  http://id.example.com/username
+
+Where id.example.com is the hostname you've given your OpenID server and
+username is whatever username is being referenced. This will supply an HTML
+endpoint and an XRDS endpoint.
+
