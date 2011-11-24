@@ -45,54 +45,54 @@ sub get_login {
     my $config = $self->{config};
     my $openid = $self->{server};
 
+    # turn HTTP arguments into a hash for easier manipulation
     my $params = {};
     map { $params->{$_} = $q->param($_) } $q->param();
-
     my $submit = delete($params->{'submit'});
 
+    # force errors to raise and run transactions
     local $dbh->{AutoCommit} = 0;
-    local $dbh->{RaiseError} = 0;
+    local $dbh->{RaiseError} = 1;
 
     # store any errors from the login process
     my @errors = ();
 
     # cancel the login
-    eval {
-        if (defined($submit) && $submit eq "cancel") {
+    if (defined($submit) && $submit eq "cancel") {
+        my $location = undef;
+
+        eval {
             # default: go to the login page
-            my $return_to = "https://" . $config->{url} . "/openid/login";
+            $location = "https://" . $config->{url} . "/openid/login";
 
-            # if this is an openid request then verify openid fields:
-            # -> ns, return_to, identity, realm, trust_root
+            # if this is coming as an openid request then verify the parameters match
+            # with what was submitted earlier
             my $openid_data = $session->get('openid');
-            if (defined($openid_data) &&
-                defined($openid_data->{ns})         && defined($params->{ns}) &&
-                defined($openid_data->{return_to})  && defined($params->{return_to}) &&
-                defined($openid_data->{identity})   && defined($params->{identity}) &&
-                defined($openid_data->{realm})      && defined($params->{realm}) &&
-                defined($openid_data->{trust_root}) && defined($params->{trust_root})) {
-                if ($params->{ns}         eq $openid_data->{ns} &&
-                    $params->{return_to}  eq $openid_data->{return_to} &&
-                    $params->{identity}   eq $openid_data->{identity} &&
-                    $params->{realm}      eq $openid_data->{realm} &&
-                    $params->{trust_root} eq $openid_data->{trust_root}) {
-
-                    # send back to the originator's cancel url
-                    $return_to = $openid->cancel_return_url(return_to => $params->{return_to});
-                } else {
-                    die "Detected forged OpenID headers.\n";
-                }
+            if (!$engine->check_forged_headers($openid_data, $params)) {
+                # send back to the originator's cancel url
+                $location = $openid->cancel_return_url(return_to => $params->{return_to});
+            } else {
+                die "Detected forged OpenID headers.\n";
             }
 
-            # commit before redirecting
             $dbh->commit();
+        };
+        if ($@) {
+            push(@errors, $@);
+            eval { $dbh->rollback(); };
+            if ($@) { push(@errors, $@); }
+        }
 
-            $r->headers_out->set(Location => $return_to);
+        if (!scalar(@errors) && defined($location)) {
+            $r->headers_out->set(Location => $location);
             $r->status(Apache2::Const::REDIRECT);
             return Apache2::Const::REDIRECT;
         }
+    }
 
-        if (defined($submit) && $submit eq "login") {
+    # process the login
+    if (defined($submit) && $submit eq "login") {
+        eval {
             my $username = delete($params->{'username'});
             my $password = delete($params->{"password"});
             my $remember = delete($params->{"remember"});
@@ -100,7 +100,7 @@ sub get_login {
             die "No username given.\n" unless defined($username) && length($username);
             die "No password given.\n" unless defined($password) && length($password);
 
-            my $success1 = $engine->is_user(username => $username);
+            my $success1 = $engine->is_valid_username(username => $username);
             die "Invalid username/password.\n" unless ($success1);
 
             my $success2 = $engine->is_valid_password(username => $username, password => $password);
@@ -135,6 +135,7 @@ sub get_login {
                 my $expires = 2592000; # 30 days
 
                 # save the ID in the database
+                # there can be multiple ids for each user because a user could have saved on multiple computers
                 my $save_secret_sth = $dbh->prepare_cached(q|
                     INSERT INTO autologin (user_id, secret, expires) VALUES (?, ?, ?)
                 |);
@@ -154,59 +155,53 @@ sub get_login {
             }
 
             # two ways to stay logged in: special cookie or the session
-            $session->set('valid', 1);
             $session->set('username', $username);
 
             $dbh->commit();
+        };
+        if ($@) {
+            push(@errors, $@);
+            eval { $dbh->rollback(); };
+            if ($@) { push(@errors, $@); }
         }
-    };
-    if ($@) {
-        push(@errors, $@);
-        eval { $dbh->rollback(); };
-        if ($@) { push(@errors, $@); }
     }
 
-    eval {
-        # see if the user is logged in, because if it is then we don't want to log in
-        if (!scalar(@errors) && $engine->is_logged_in()) {
+    if (!scalar(@errors) && $engine->is_logged_in()) {
+        my $location = undef;
+
+        eval {
+            # see if the user is logged in, because if the user is logged in
+            # then we don't need to log in again
             # default: go to the profile
-            my $return_to = "https://" . $config->{url} . "/openid/profile";
+            $location = "https://" . $config->{url} . "/openid/profile";
 
-            # if this is an openid request then verify openid fields:
-            # -> ns, return_to, identity, realm, trust_root
+            # if this is coming as an openid request then verify the parameters match
+            # with what was submitted earlier
+            my $realm = $params->{realm};
             my $openid_data = $session->get('openid');
-            if (defined($openid_data) &&
-                defined($openid_data->{ns})         && defined($params->{ns}) &&
-                defined($openid_data->{return_to})  && defined($params->{return_to}) &&
-                defined($openid_data->{identity})   && defined($params->{identity}) &&
-                defined($openid_data->{realm})      && defined($params->{realm}) &&
-                defined($openid_data->{trust_root}) && defined($params->{trust_root})) {
-                if ($params->{ns}         eq $openid_data->{ns} &&
-                    $params->{return_to}  eq $openid_data->{return_to} &&
-                    $params->{identity}   eq $openid_data->{identity} &&
-                    $params->{realm}      eq $openid_data->{realm} &&
-                    $params->{trust_root} eq $openid_data->{trust_root}) {
-
+            if (defined($realm) && defined($openid_data)) {
+                if (!$engine->check_forged_headers($openid_data, $params)) {
                     # go to the page where we check for a trusted realm
-                    $return_to = "https://" . $config->{url} . "/openid/trust";
-                    $return_to .= '?' . join('&', map { $_ . '=' . uri_escape(defined $params->{$_} ? $params->{$_} : '') } keys %{$params});
+                    $location = "https://" . $config->{url} . "/openid/trust";
+                    $location .= '?' . join('&', map { $_ . '=' . uri_escape(defined $params->{$_} ? $params->{$_} : '') } keys %{$params});
                 } else {
                     die "Detected forged OpenID headers.\n";
                 }
             }
 
-            # commit before redirecting
             $dbh->commit();
+        };
+        if ($@) {
+            push(@errors, $@);
+            eval { $dbh->rollback(); };
+            if ($@) { push(@errors, $@); }
+        }
 
-            $r->headers_out->set(Location => $return_to);
+        if (!scalar(@errors) && defined($location)) {
+            $r->headers_out->set(Location => $location);
             $r->status(Apache2::Const::REDIRECT);
             return Apache2::Const::REDIRECT;
         }
-    };
-    if ($@) {
-        push(@errors, $@);
-        eval { $dbh->rollback(); };
-        if ($@) { push(@errors, $@); }
     }
 
     # display the login screen

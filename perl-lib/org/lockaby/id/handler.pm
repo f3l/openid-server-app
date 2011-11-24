@@ -73,6 +73,8 @@ sub handler {
                     my $handler = org::lockaby::id::handler::service->new(config => $values, session => $session, engine => $engine);
                     return $handler->get_service(action => $uri[2]);
                 }
+
+                # if not SSL and not "service", redirect to SSL
                 $r->headers_out->set(Location => "https://" . $values->{url} . $ENV{REQUEST_URI});
                 $r->status(Apache2::Const::REDIRECT);
                 return Apache2::Const::REDIRECT;

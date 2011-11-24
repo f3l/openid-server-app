@@ -42,8 +42,7 @@ sub get_profile {
     my $openid = $self->{server};
 
     # if the user is not logged in, send them back to the login page
-    my $is_logged_in = $engine->is_logged_in();
-    if (!$is_logged_in) {
+    if (!$engine->is_logged_in()) {
         $r->headers_out->set(Location => "https://" . $config->{url} . "/openid/login");
         $r->status(Apache2::Const::REDIRECT);
         return Apache2::Const::REDIRECT;
@@ -51,6 +50,11 @@ sub get_profile {
 
     # figure out who we are
     my $username = $engine->get_username();
+    if (!$engine->is_valid_username(username => $username)) {
+        $r->headers_out->set(Location => "https://" . $config->{url} . "/openid/login");
+        $r->status(Apache2::Const::REDIRECT);
+        return Apache2::Const::REDIRECT;
+    }
 
     my $details_sth = $dbh->prepare_cached(q|
         SELECT email_address, nickname, fullname, is_manager
@@ -69,7 +73,7 @@ sub get_profile {
         my @errors = ();
 
         local $dbh->{AutoCommit} = 0;
-        local $dbh->{RaiseError} = 0;
+        local $dbh->{RaiseError} = 1;
 
         eval {
             if (defined($form) && $form eq "trusted") {
@@ -308,7 +312,7 @@ sub get_profile {
                         <div class="clear"></div>
                     </div>
                     ${\join("", @users)}
-                </form>
+                </form><br/>
             </div>
         |;
     }
@@ -349,7 +353,7 @@ sub get_profile {
                         <div class="clear"></div>
                     </div>
                     ${\join("\n", @trusted)}
-                </form>
+                </form><br/>
             </div>
             <div id="profile">
                 <form autocomplete="off" method="POST">
@@ -386,7 +390,7 @@ sub get_profile {
                     <div style="text-align: center;">
                         <input type="submit" name="save" value="save"/>
                     </div>
-                </form>
+                </form><br/>
             </div>
             ${tools_tab_content}
         </div>

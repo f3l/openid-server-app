@@ -49,6 +49,10 @@ sub get_service {
     my $params = {};
     map { $params->{$_} = $q->param($_) } $q->param();
 
+    # force errors to raise and run transactions
+    local $dbh->{AutoCommit} = 0;
+    local $dbh->{RaiseError} = 1;
+
     if ($action eq "endpoint") {
         my ($type, $data) = $openid->handle_page();
 
@@ -56,6 +60,7 @@ sub get_service {
             # the user and the realm are trusted
             # log it and redirect
 
+            # store errors
             my @errors = ();
 
             eval {
@@ -63,6 +68,7 @@ sub get_service {
                 my $username = $engine->get_username();
                 my $user_id = $engine->get_user_id(username => $username);
                 my $trusted_id = $engine->get_trusted_id(realm => $realm);
+
                 my $log_sth = $dbh->prepare(q|
                     INSERT INTO log (user_id, trusted_id, ip_address, useragent, logged)
                              VALUES (?, ?, ?, ?, NOW())
@@ -118,15 +124,37 @@ sub get_service {
     }
 
     if ($action eq "setup") {
-        my $username = $params->{username} || undef;
-        my $realm = $params->{realm} || undef;
+        # store errors
+        my @errors = ();
 
-        # redirect to the login screen
-        my $location = 'https://' . $config->{url} . '/openid/login';
-        $location .= '?' . join('&', map { $_ . '=' . uri_escape(defined $params->{$_} ? $params->{$_} : '') } keys %{$params});
+        my $location = undef;
 
-        # store all of the pieces of the openid request for later verification
-        $session->set('openid', $params);
+        # this is in an eval block because using the session writes to the database
+        eval {
+            my $username = $params->{username} || undef;
+            my $realm = $params->{realm} || undef;
+
+            # redirect to the login screen
+            $location = 'https://' . $config->{url} . '/openid/login';
+            $location .= '?' . join('&', map { $_ . '=' . uri_escape(defined $params->{$_} ? $params->{$_} : '') } keys %{$params});
+
+            # store all of the pieces of the openid request for later verification
+            $session->set('openid', $params);
+
+            $dbh->commit();
+        };
+        if ($@) {
+            push(@errors, $@);
+            eval { $dbh->rollback(); };
+            if ($@) { push(@errors, $@); }
+        }
+
+        if (scalar(@errors) || !defined($location)) {
+            $r->content_type("text/plain; charset=utf-8");
+            $r->status(Apache2::Const::SERVER_ERROR);
+            print join("\n", @errors);
+            return Apache2::Const::SERVER_ERROR;
+        }
 
         $r->headers_out->set(Location => $location);
         $r->status(Apache2::Const::REDIRECT);

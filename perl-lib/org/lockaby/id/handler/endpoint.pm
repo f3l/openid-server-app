@@ -34,7 +34,7 @@ sub get_endpoint {
     );
 
     eval {
-        if ($self->{engine}->is_user(username => $args{username})) {
+        if ($self->{engine}->is_valid_username(username => $args{username})) {
             my $format = $self->{engine}->q()->param('format');
             if (defined($format)) {
                 return $self->_get_xrds(username => $args{username}) if ($format eq "xrds");
@@ -73,20 +73,20 @@ sub _get_xrds {
                 <!-- OpenID 2.0 login service -->
                 <Service priority="10">
                     <Type>http://specs.openid.net/auth/2.0/signon</Type>
-                    <URI>https://${\$self->{config}->{url}}/openid/service</URI>
-                    <LocalID>https://${\$self->{config}->{url}}/${\$args{username}}</LocalID>
+                    <URI>http://${\$self->{config}->{url}}/openid/service</URI>
+                    <LocalID>http://${\$self->{config}->{url}}/${\$args{username}}</LocalID>
                 </Service>
                 <!-- OpenID 1.1 login service -->
                 <Service priority="20">
                     <Type>http://openid.net/signon/1.1</Type>
-                    <URI>https://${\$self->{config}->{url}}/openid/service</URI>
-                    <openid:Delegate>https://${\$self->{config}->{url}}/${\$args{username}}</openid:Delegate>
+                    <URI>http://${\$self->{config}->{url}}/openid/service</URI>
+                    <openid:Delegate>http://${\$self->{config}->{url}}/${\$args{username}}</openid:Delegate>
                 </Service>
                 <!-- OpenID 1.0 login service -->
                 <Service priority="30">
                     <Type>http://openid.net/signon/1.0</Type>
-                    <URI>https://${\$self->{config}->{url}}/openid/service</URI>
-                    <openid:Delegate>https://${\$self->{config}->{url}}/${\$args{username}}</openid:Delegate>
+                    <URI>http://${\$self->{config}->{url}}/openid/service</URI>
+                    <openid:Delegate>http://${\$self->{config}->{url}}/${\$args{username}}</openid:Delegate>
                 </Service>
             </XRD>
         </xrds:XRDS>
@@ -105,10 +105,10 @@ sub _get_user {
     my $t = org::lockaby::id::template->new({
         title => $self->{config}->{url} . " - " . $args{username},
         meta  => [
-            '<link rel="openid2.provider" href="https://' . $self->{config}->{url} . '/openid/service"/>',
-            '<link rel="openid2.local_id" href="https://' . $self->{config}->{url} . '/' . $args{username} . '"/>',
-            '<link rel="openid.server" href="https://' . $self->{config}->{url} . '/openid/service"/>',
-            '<link rel="openid.delegate" href="https://' . $self->{config}->{url} . '/' . $args{username} . '"/>',
+            '<link rel="openid2.provider" href="http://' . $self->{config}->{url} . '/openid/service"/>',
+            '<link rel="openid2.local_id" href="http://' . $self->{config}->{url} . '/' . $args{username} . '"/>',
+            '<link rel="openid.server" href="http://' . $self->{config}->{url} . '/openid/service"/>',
+            '<link rel="openid.delegate" href="http://' . $self->{config}->{url} . '/' . $args{username} . '"/>',
             '<meta http-equiv="X-XRDS-Location" content="http://' . $self->{config}->{url} . '/' . $args{username} . '?format=xrds">',
         ],
     });

@@ -42,8 +42,11 @@ sub get_logout {
     my $config = $self->{config};
     my $openid = $self->{server};
 
-    my $is_logged_in = $engine->is_logged_in();
-    if ($is_logged_in) {
+    if ($engine->is_logged_in()) {
+        # force errors to raise and run transactions
+        local $dbh->{AutoCommit} = 0;
+        local $dbh->{RaiseError} = 1;
+
         eval {
             my $jar = Apache2::Cookie::Jar->new($r);
             my $cookie = $jar->cookies(org::lockaby::id::COOKIE_NAME_AUTOLOGIN);

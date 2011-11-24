@@ -8,12 +8,10 @@ use utf8;
 use constant COOKIE_NAME_SESSION => 'OPENID_SESSION';
 use constant COOKIE_NAME_AUTOLOGIN => 'OPENID_USER';
 
-use org::lockaby::utilities;
-
-use Apache2::Const qw(:common);
-use MIME::Base64 qw(encode_base64 decode_base64);
-use Storable qw(freeze thaw);
+use Storable qw(thaw);
 use Net::OpenID::Server;
+
+use org::lockaby::utilities;
 
 sub new {
     my $class = shift;
@@ -52,7 +50,7 @@ sub dbh {
     return $self->{dbh};
 }
 
-sub is_user {
+sub is_valid_username {
     my $self = shift;
     my %args = (
         username => undef,
@@ -77,15 +75,15 @@ sub is_valid_password {
         @_,
     );
 
-    my $sth = $self->dbh()->prepare_cached(q|
-        SELECT COUNT(*) FROM users WHERE username = LOWER(?) AND password = ?
-    |);
-    $sth->execute($args{username}, org::lockaby::utilities::get_md5_from_string($args{password}));
-    my ($count) = $sth->fetchrow();
-    $sth->finish();
-
-    return 1 if ($count > 0);
-    return 0;
+     my $sth = $self->dbh()->prepare_cached(q|
+         SELECT COUNT(*) FROM users WHERE username = LOWER(?) AND password = ? AND is_enabled = 1
+     |);
+     $sth->execute($args{username}, org::lockaby::utilities::get_md5_from_string($args{password}));
+     my ($count) = $sth->fetchrow();
+     $sth->finish();
+ 
+     return 1 if ($count > 0);
+     return 0;
 }
 
 sub is_logged_in {
@@ -109,18 +107,19 @@ sub is_logged_in {
 
         my $sth = $self->dbh()->prepare_cached(q|
             SELECT COUNT(*) FROM autologin WHERE secret = ? AND user_id IN (
-                SELECT user_id FROM users WHERE username = LOWER(?)
+                SELECT user_id FROM users WHERE username = LOWER(?) AND is_enabled = 1
             )
         |);
         $sth->execute($secret, $username);
         ($logged_in_flag) = $sth->fetchrow();
         $sth->finish();
 
-        $self->{session}->set('valid', 1);
+        # set a session user name
         $self->{session}->set('username', $username);
     }
 
-    if ($self->{session}->get('valid') && $self->{session}->get('username')) {
+    # if the session username exists then the user is logged in
+    if ($self->{session}->get('username')) {
         $logged_in_flag = 1;
     }
 
@@ -140,7 +139,7 @@ sub is_trusted {
         SELECT COUNT(*)
         FROM trusted
         WHERE realm = ? AND authorized = 1 AND user_id IN (
-            SELECT id FROM users WHERE username = LOWER(?)
+            SELECT id FROM users WHERE username = LOWER(?) AND is_enabled = 1
         )
     |);
     $sth->execute($args{realm}, $self->get_username());
@@ -270,6 +269,30 @@ sub get_server {
             return $secret;
         },
     );
+}
+
+sub check_forged_headers {
+    my ($self, $a, $b) = @_;
+
+    return 1 unless defined($a);
+    return 1 unless defined($b);
+
+    return 1 unless (ref($a) eq "HASH");
+    return 1 unless (ref($b) eq "HASH");
+
+    return 1 unless (defined($a->{ns})         && defined($b->{ns}));
+    return 1 unless (defined($a->{return_to})  && defined($b->{return_to}));
+    return 1 unless (defined($a->{identity})   && defined($b->{identity}));
+    return 1 unless (defined($a->{realm})      && defined($b->{realm}));
+    return 1 unless (defined($a->{trust_root}) && defined($b->{trust_root}));
+
+    return 1 unless ($a->{ns}         eq $b->{ns});
+    return 1 unless ($a->{return_to}  eq $b->{return_to});
+    return 1 unless ($a->{identity}   eq $b->{identity});
+    return 1 unless ($a->{realm}      eq $b->{realm});
+    return 1 unless ($a->{trust_root} eq $b->{trust_root});
+
+    return 0;
 }
 
 1;
