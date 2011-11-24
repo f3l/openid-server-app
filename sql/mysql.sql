@@ -7,6 +7,8 @@ CREATE TABLE `users` (
   `fullname` varchar(128) DEFAULT NULL,
   `created` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
   `logged` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+  `is_manager` int(1) NOT NULL DEFAULT 0,
+  `is_enabled` int(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `users_username_idx` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
@@ -41,6 +43,7 @@ CREATE TABLE `trusted` (
   `created` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
   `logged` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `trusted_realm_uq` (`realm`, `user_id`),
   KEY `trusted_user_id_fk` (`user_id`),
   CONSTRAINT `trusted_user_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;

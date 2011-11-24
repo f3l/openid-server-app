@@ -1,5 +1,8 @@
 var openid = {};
 openid.events = {};
+openid.trusted = {};
+openid.profile = {};
+openid.management = {};
 
 openid.events.login = function (event, form) {
     var username_obj = jQuery(form).find('input[name="username"]');
@@ -52,7 +55,7 @@ openid.events.trust = function (event, form) {
     jQuery(form).find('input[type="submit"]').attr('disabled', 'disabled');
 }
 
-openid.events.remove = function (event, form) {
+openid.trusted.remove = function (event, form) {
     event.preventDefault();
 
     var remove = new Array();
@@ -66,6 +69,7 @@ openid.events.remove = function (event, form) {
         dataType: 'xml',
         data: {
             'submit': true,
+            'form': 'trusted',
             'remove': remove
         },
         error: function () {
@@ -98,7 +102,7 @@ openid.events.remove = function (event, form) {
     });
 }
 
-openid.select = function (e, action) {
+openid.trusted.select = function (e, action) {
     var form = jQuery(e).closest('form');
     if (action === 'all') {
         jQuery(form).find('input[type="checkbox"]:not(:disabled)').each(function (index, item) {
@@ -112,11 +116,122 @@ openid.select = function (e, action) {
     }
 }
 
-openid.checked = function (event, checkbox) {
+openid.trusted.checked = function (event, checkbox) {
     if (jQuery(checkbox).is(':checked')) {
         jQuery(checkbox).closest('div.row').addClass('highlight');
     } else {
         jQuery(checkbox).closest('div.row').removeClass('highlight');
     }
+}
+
+openid.profile.save = function (event, form) {
+    event.preventDefault();
+
+    jQuery.ajax({
+        url: window.location,
+        type: 'POST',
+        dataType: 'xml',
+        data: {
+            'submit': true,
+            'form': 'profile',
+            'email_address': jQuery(form).find('input[name="email_address"]').val(),
+            'fullname': jQuery(form).find('input[name="fullname"]').val(),
+            'nickname': jQuery(form).find('input[name="nickname"]').val()
+        },
+        error: function () {
+            alert('There was a server error when trying to save your profile.');
+        },
+        success: function (response) {
+            var errors = false;
+            jQuery(response).find('errors > error').each(function (index, item) {
+                alert(jQuery(item).text());
+                errors = true;
+            });
+
+            if (!errors) {
+                var value = jQuery(response).find('content').text();
+                if (value === 'success') {
+                    // NOTHING
+                } else {
+                    alert('Unknown response from the server.');
+                }
+            }
+        }
+    });
+}
+
+openid.management.clear = function (type) {
+    jQuery.ajax({
+        url: window.location,
+        type: 'POST',
+        dataType: 'xml',
+        data: {
+            'submit': true,
+            'form': 'management',
+            'action': 'clear',
+            'type': type
+        },
+        error: function () {
+            alert('There was a server error when trying to execute this action.');
+        },
+        success: function (response) {
+            var errors = false;
+            jQuery(response).find('errors > error').each(function (index, item) {
+                alert(jQuery(item).text());
+                errors = true;
+            });
+
+            if (!errors) {
+                var value = jQuery(response).find('content').text();
+                if (value === 'success') {
+                    jQuery('#management span.count_' + type).html('0');
+                } else {
+                    alert('Unknown response from the server.');
+                }
+            }
+        }
+    });
+}
+
+openid.management.save = function (event, input) {
+    event.preventDefault();
+
+    var row = jQuery(input).closest('div.row');
+    var username = jQuery(row).find('div.username').text();
+    var type = jQuery(input).attr('name');
+    var value = jQuery(input).attr('checked') ? 1 : 0;
+
+    jQuery.ajax({
+        url: window.location,
+        type: 'POST',
+        dataType: 'xml',
+        data: {
+            'submit': true,
+            'form': 'management',
+            'action': 'toggle',
+            'type': type,
+            'value': value,
+            'username': username
+        },
+        error: function () {
+            alert('There was a server error when trying to execute this action.');
+        },
+        success: function (response) {
+            var errors = false;
+            jQuery(response).find('errors > error').each(function (index, item) {
+                alert(jQuery(item).text());
+                errors = true;
+            });
+
+            if (!errors) {
+                var value = jQuery(response).find('content').text();
+                if (value === 'success') {
+                    // NOTHING
+                } else {
+                    alert('Unknown response from the server.');
+                }
+            }
+        }
+    });
 }
 

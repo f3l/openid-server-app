@@ -39,8 +39,10 @@ sub get_header {
                 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
                 <meta http-equiv="Content-Language" content="en"/>
                 <meta name="ROBOTS" content="NOINDEX, NOFOLLOW"/>
+                <link REL="stylesheet" TYPE="text/css" HREF="/support/resources/jqueryui/jquery-ui-current.css"/>
                 <link REL="stylesheet" TYPE="text/css" HREF="/support/standard.css"/>
                 <script type="text/javascript" src="/support/resources/jquery/jquery-current.js"></script>
+                <script type="text/javascript" src="/support/resources/jqueryui/jquery-ui-current.js"></script>
                 <script type="text/javascript" src="/support/standard.js"></script>
                 ${\join("\n", @meta)}
             </head>

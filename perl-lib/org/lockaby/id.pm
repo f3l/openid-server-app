@@ -60,7 +60,7 @@ sub is_user {
     );
 
     my $sth = $self->dbh()->prepare_cached(q|
-        SELECT COUNT(*) FROM users WHERE username = LOWER(?)
+        SELECT COUNT(*) FROM users WHERE username = LOWER(?) AND is_enabled = 1
     |);
     $sth->execute($args{username});
     my ($user_exists_flag) = $sth->fetchrow();

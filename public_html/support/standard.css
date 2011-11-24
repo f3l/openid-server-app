@@ -30,8 +30,8 @@ HR {
 
 #content {
     padding: 0px;
-    width: 600px;
     margin: 10px auto;
+    width: 610px;
 }
 
 #title {
@@ -88,64 +88,172 @@ HR {
     width: 60px;
 }
 
-#profile {
-    width: 600px;
+#header {
+    width: 610px;
     margin: 0px auto;
+    padding: 2px;
 }
 
-#profile div.username {
+#header div.username {
     float: left;
 }
 
-#profile div.logout {
+#header div.logout {
     float: right;
     text-align: right;
 }
 
-#profile div.clear {
+#header div.clear {
     clear: both;
+}   
+    
+#tabs {
+    width: 612px;
+    margin: 0px auto;
+    padding: 0px;
+    background: white;
 }
 
-#profile div.empty {
-    text-align: center;
-    margin-top: 20px;
+#management {
+    font-size: 12px;
+    margin-bottom: 0px;
+    padding-bottom: 0px;
 }
 
-#profile input[type="submit"] {
-    margin: 4px;
-    width: 60px;
-}
-
-#profile div.header {
+#management div.header {
+    width: 500px;
+    margin: 2px auto;
     font-weight: bold;
     background: #cccccc;
     padding: 2px 0px 2px 4px;
 }
 
-#profile div.row {
-    padding: 2px 0px 2px 0px;
+#management div.row {
+    width:  500px;
+    margin: 0px auto 6px auto;
 }
 
-#profile div.header > div, div.row > div {
+#management div.header > div.username, div.row > div.username {
+    width: 250px;
+    text-align: left;
+    float: left;
+}
+
+#management div.header > div.is, div.row > div.is {
+    width: 110px;
+    text-align: center;
+    float: right;
+}
+
+#management div.header > div.clear, div.row > div.clear {
+    clear: both;
+}
+
+#profile {
+    margin: 0px;
+    padding: 0px;
+    font-size: 12px;
+}
+
+#profile div.introduction {
+    margin: 4px auto 10px auto;
+    text-align: center;
+    width: 400px;
+}
+
+#profile div.row {
+    width: 480px;
+    margin: 0px auto 8px auto;
+}
+
+#profile div.row > div.label {
+    width: 125px;
+    padding: 3px 0px 0px 0px;
+    text-align: right;
+    float: left;
+    font-weight: bold;
+}
+
+#profile div.row > div.value {
+    margin: 0px 0px 0px 6px;
+    text-align: left;
+    float: left;
+}
+
+#profile div.row > div.value > input[type="text"] {
+    width: 310px;
+}
+
+#profile div.row > div.clear {
+    clear: both;
+}
+
+#profile input[type="submit"] {
+    font-size: 10px;
+    margin: 4px 4px 15px 4px;
+    width: 45px;
+}
+
+#trusted {
+    margin: 0px;
+    padding: 4px;
+    font-size: 12px;
+}
+
+#trusted div.introduction {
+    margin: 4px 0px;
+    text-align: center;
+}
+
+#trusted div.select {
+    padding: 0px 0px 2px 2px;
+}
+
+#trusted div.empty {
+    text-align: center;
+    margin-top: 20px;
+}
+
+#trusted input[type="submit"] {
+    font-size: 10px;
+    margin: 4px 4px 15px 4px;
+    width: 60px;
+}
+
+#trusted div.header {
+    font-weight: bold;
+    background: #cccccc;
+    padding: 2px 0px 2px 4px;
+}
+
+#trusted div.row {
+    padding: 2px 0px 4px 0px;
+}
+
+#trusted div.header > div, div.row > div {
     margin: 0px;
     padding: 0px;
 }
 
-#profile div.header > div.name, div.row > div.name {
+#trusted div.header > div.name, div.row > div.name {
     float: left;
 }
 
-#profile div.row > div.logged {
+#trusted div.row > div.logged {
     margin-left: 25px;
     float: left;
 }
 
-#profile div.row > div.accessed {
+#trusted div.row > div.accessed {
     float: right;
     width: 115px;
 }
 
-#profile div.row.highlight {
+#trusted div.row.highlight {
     background: #ffff99;
+}
+
+#trusted div.clear {
+    clear: both;
 }
 
