@@ -130,22 +130,97 @@ HR {
 
 #management div.row {
     width:  500px;
-    margin: 0px auto 6px auto;
+    margin: 0px auto 8px auto;
 }
 
-#management div.header > div.username, div.row > div.username {
-    width: 250px;
+#management div.header > div.username, #management div.row div.user {
     text-align: left;
     float: left;
 }
 
-#management div.header > div.is, div.row > div.is {
-    width: 110px;
+#management div.header > div.is, #management div.row div.is {
+    width: 100px;
     text-align: center;
     float: right;
 }
 
-#management div.header > div.clear, div.row > div.clear {
+#management div.header > div.clear, #management div.row div.clear {
+    clear: both;
+}
+
+#management div.row > div.user {
+    width: 297px;
+}
+
+#management div.row > div.user > div.username {
+    float: left;
+}
+
+#management div.row > div.user > div.password {
+    float: right;
+}
+
+#management div.row > div.user > div.clear {
+    clear: both;
+}
+
+div.change {
+    font-size: 12px;
+    margin: 0px auto;
+}
+
+div.change > div.username {
+    margin: 0px 0px 8px 0px;
+    text-align: center;
+}
+
+div.change > div.username > span.username {
+    font-weight: bold;
+}
+
+div.change > div.label {
+    width: 120px;
+    font-weight: bold;
+    text-align: right;
+    float: left;
+    padding: 3px 0px 0px 0px;
+    margin: 0px 0px 8px 0px;
+}
+
+div.change > div.value {
+    text-align: left;
+    float: left;
+    margin: 0px 0px 0px 6px;
+}
+
+div.change > div.value > input {
+    width: 165px;
+}
+
+div.change > div.clear {
+    clear: both;
+}
+
+#management div.row > div.user > div.label {
+    width: 120px;
+    font-weight: bold;
+    text-align: right;
+    float: left;
+    padding: 3px 0px 0px 0px;
+    margin: 0px 0px 8px 0px;
+}
+
+#management div.row > div.user > div.value {
+    text-align: left;
+    float: left;
+    margin: 0px 0px 0px 6px;
+}
+
+#management div.row > div.user > div.value > input {
+    width: 165px;
+}
+
+#management div.row > div.user > div.clear {
     clear: both;
 }
 
@@ -167,7 +242,7 @@ HR {
 }
 
 #profile div.row > div.label {
-    width: 125px;
+    width: 120px;
     padding: 3px 0px 0px 0px;
     text-align: right;
     float: left;
@@ -180,7 +255,7 @@ HR {
     float: left;
 }
 
-#profile div.row > div.value > input[type="text"] {
+#profile div.row > div.value > input[type="text"], #profile div.row > div.value > input[type="password"] {
     width: 310px;
 }
 
@@ -230,12 +305,12 @@ HR {
     padding: 2px 0px 4px 0px;
 }
 
-#trusted div.header > div, div.row > div {
+#trusted div.header > div, #trusted div.row > div {
     margin: 0px;
     padding: 0px;
 }
 
-#trusted div.header > div.name, div.row > div.name {
+#trusted div.header > div.name, #trusted div.row > div.name {
     float: left;
 }
 

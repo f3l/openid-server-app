@@ -50,6 +50,23 @@ sub dbh {
     return $self->{dbh};
 }
 
+sub change_password {
+    my $self = shift;
+    my %args = (
+        username => undef,
+        password => undef,
+        @_,
+    );
+
+    my $sth = $self->dbh()->prepare_cached(q|
+        UPDATE users SET password = MD5(?) WHERE username = LOWER(?)
+    |);
+    $sth->execute($args{password}, $args{username});
+    $sth->finish();
+
+    return 1;
+}
+
 sub is_valid_username {
     my $self = shift;
     my %args = (

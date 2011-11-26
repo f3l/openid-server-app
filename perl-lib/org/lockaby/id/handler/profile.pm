@@ -98,6 +98,10 @@ sub get_profile {
                 my $fullname = $q->param('fullname');
                 my $nickname = $q->param('nickname');
 
+                $email_address =~ s/^\s+|\s+$//g;
+                $fullname =~ s/^\s+|\s+$//g;
+                $nickname =~ s/^\s+|\s+$//g;
+
                 my $save_sth = $dbh->prepare_cached(q|
                     UPDATE users
                     SET email_address = ?,
@@ -107,10 +111,59 @@ sub get_profile {
                 |);
                 $save_sth->execute($email_address, $fullname, $nickname, $username);
                 $save_sth->finish();
+
+                my $password1 = $q->param('password1');
+                my $password2 = $q->param('password2');
+
+                if (defined($password1) && defined($password2)) {
+                    $password1 =~ s/^\s+|\s+$//g;
+                    $password2 =~ s/^\s+|\s+$//g;
+
+                    if (length($password1) && length($password2)) {
+                        if ($password1 eq $password2) {
+                            $engine->change_password(username => $username, password => $password1);
+                        } else {
+                            die "Passwords do not match.\n";
+                        }
+                    }
+                }
+
+                $content = "success";
             }
 
             if (defined($form) && $form eq "management" && $is_manager) {
                 my $action = $q->param('action');
+
+                if (defined($action) && $action eq "create") {
+                    my $username = $q->param('username');
+                    my $password1 = $q->param('password1');
+                    my $password2 = $q->param('password2');
+                    my $is_manager = $q->param('is_manager');
+                    my $is_enabled = $q->param('is_enabled');
+
+                    if (defined($username) && defined($password1) && defined($password2)) {
+                        $username =~ s/^\s+|\s+$//g;
+                        $password1 =~ s/^\s+|\s+$//g;
+                        $password2 =~ s/^\s+|\s+$//g;
+
+                        if (length($username) && length($password1) && length($password2) && $password1 eq $password2) {
+                            my $create_user_sth = $dbh->prepare_cached(q|
+                                INSERT INTO users (username, created, is_manager, is_enabled)
+                                           VALUES (LOWER(?), NOW(), ?, ?)
+                            |);
+                            $create_user_sth->execute($username, $is_manager, $is_enabled);
+                            $create_user_sth->finish();
+
+                            $engine->change_password(username => $username, password => $password1);
+
+                            $content = 'success';
+                        } else {
+                            die "Could not create user. No username or password given.\n";
+                        }
+                    } else {
+                        die "Could not create user. No username or password given.\n";
+                    }
+                }
 
                 if (defined($action) && $action eq "clear") {
                     my $type = $q->param('type');
@@ -161,6 +214,28 @@ sub get_profile {
                             $toggle_sth->finish();
                             $content = 'success';
                         }
+                    }
+                }
+
+                if (defined($action) && $action eq "password") {
+                    my $username = $q->param('username');
+                    my $password1 = $q->param('password1');
+                    my $password2 = $q->param('password2');
+
+                    if (defined($username)) {
+                        $username =~ s/^\s+|\s+$//g;
+                        $password1 =~ s/^\s+|\s+$//g if defined($password1);
+                        $password2 =~ s/^\s+|\s+$//g if defined($password2);
+
+                        if (length($username) && $password1 eq $password2) {
+                            $engine->change_password(username => $username, password => $password1);
+
+                            $content = 'success';
+                        } else {
+                            die "Could not change password. No username given.\n";
+                        }
+                    } else {
+                        die "Could not change password. No username given.\n";
                     }
                 }
             }
@@ -237,8 +312,8 @@ sub get_profile {
         |);
     }
 
-    my $tools_tab_link = "";
-    my $tools_tab_content = "";
+    my $management_tab_link = "";
+    my $management_tab_content = "";
 
     if ($is_manager) {
         my $count_sessions_sth = $dbh->prepare_cached("SELECT COUNT(*) FROM sessions");
@@ -271,7 +346,13 @@ sub get_profile {
 
             push(@users, qq|
                 <div class="row">
-                    <div class="username">${all_users_username}</div>
+                    <div class="user">
+                        <div class="username">${all_users_username}</div>
+                        <div class="password">
+                            [<a href="javascript:void(0);" onclick="openid.management.password.change(this);">change password</a>]
+                        </div>
+                        <div class="clear"></div>
+                    </div>
                     <div class="is">
                         <input type="checkbox" name="is_manager" ${is_manager_checkbox}/>
                     </div>
@@ -284,10 +365,10 @@ sub get_profile {
         }
         $all_users_sth->finish();
 
-        $tools_tab_link = q|
+        $management_tab_link = q|
             <li><a href="#management">Management</a></li>
         |;
-        $tools_tab_content = qq|
+        $management_tab_content = qq|
             <div id="management">
                 <ul>
                     <li>
@@ -304,15 +385,76 @@ sub get_profile {
                     </li>
                 </ul>
 
-                <form autocomplete="off" method="POST">
-                    <div class="header">
-                        <div class="username">Username</div>
-                        <div class="is">Is manager?</div>
-                        <div class="is">Is enabled?</div>
-                        <div class="clear"></div>
+                <form autocomplete="off" method="POST" name="toggle">
+                    <div class="users">
+                        <div class="header">
+                            <div class="username">Username</div>
+                            <div class="is">Is manager?</div>
+                            <div class="is">Is enabled?</div>
+                            <div class="clear"></div>
+                        </div>
+                        ${\join("", @users)}
                     </div>
-                    ${\join("", @users)}
+
+                    <div class="create">
+                        <div class="header">
+                            <div class="username">Create New User</div>
+                            <div class="is">Is manager?</div>
+                            <div class="is">Is enabled?</div>
+                            <div class="clear"></div>
+                        </div>
+                        <div class="row">
+                            <div class="user">
+                                <div class="label">Username:</div>
+                                <div class="value">
+                                    <input type="text" name="username" value=""/>
+                                </div>
+                                <div class="clear"></div>
+
+                                <div class="label">Password:</div>
+                                <div class="value">
+                                    <input type="password" name="password1" value=""/>
+                                </div>
+                                <div class="clear"></div>
+
+                                <div class="label">Verify Password:</div>
+                                <div class="value">
+                                    <input type="password" name="password2" value=""/>
+                                </div>
+                                <div class="clear"></div>
+                            </div>
+                            <div class="is">
+                                <input type="checkbox" name="is_manager"/>
+                            </div>
+                            <div class="is">
+                                <input type="checkbox" name="is_enabled" checked="checked"/>
+                            </div>
+                            <div class="clear"></div>
+                        </div>
+                    </div>
+
+                    <div style="text-align: center;">
+                        <input type="submit" name="save" value="save"/>
+                    </div>
                 </form><br/>
+
+                <div class="change">
+                    <div class="username">
+                        Changing password for <span class="username"></span>.
+                    </div>
+
+                    <div class="label">Password:</div>
+                    <div class="value">
+                        <input type="password" name="password1" value=""/>
+                    </div>
+                    <div class="clear"></div>
+
+                    <div class="label">Verify Password:</div>
+                    <div class="value">
+                        <input type="password" name="password2" value=""/>
+                    </div>
+                    <div class="clear"></div>
+                </div>
             </div>
         |;
     }
@@ -336,7 +478,7 @@ sub get_profile {
             <ul>
                 <li><a href="#trusted">Trusted Sites</a></li>
                 <li><a href="#profile">My Profile</a></li>
-                ${tools_tab_link}
+                ${management_tab_link}
             </ul>
             <div id="trusted">
                 <form autocomplete="off" method="POST">
@@ -387,30 +529,57 @@ sub get_profile {
                         <div class="clear"></div>
                     </div>
 
+                    <div class="row" style="text-align: center;">
+                        Enter a new password to change your password.<br/>
+                        Enter no password to leave your password as it is.<br/>
+                    </div>
+
+                    <div class="row">
+                        <div class="label">Password:</div>
+                        <div class="value">
+                            <input type="password" value="" name="password1"/>
+                        </div>
+                        <div class="clear"></div>
+                    </div>
+
+                    <div class="row">
+                        <div class="label">Verify Password:</div>
+                        <div class="value">
+                            <input type="password" value="" name="password2"/>
+                        </div>
+                        <div class="clear"></div>
+                    </div>
+
                     <div style="text-align: center;">
                         <input type="submit" name="save" value="save"/>
                     </div>
                 </form><br/>
             </div>
-            ${tools_tab_content}
+            ${management_tab_content}
         </div>
         <script type="text/javascript">
             jQuery(document).ready(function() {
                 jQuery('#tabs').tabs();
+
+                openid.management.password.create();
                 jQuery('#management form').submit(function (event) {
-                    event.preventDefault();
-                });
-                jQuery('#management form input[type="checkbox"]').change(function (event) {
+                    // save a new user
                     openid.management.save(event, this);
                 });
-                jQuery('#profile form').submit(function (event) {
-                    openid.profile.save(event, this);
+                jQuery('#management form input[type="checkbox"]').change(function (event) {
+                    // toggle an existing user
+                    openid.management.toggle(event, this);
                 });
+
                 jQuery('#trusted form').submit(function (event) {
                     openid.trusted.remove(event, this);
                 });
                 jQuery('#trusted form').find('input[type="checkbox"]').click(function (event) {
                     openid.trusted.checked(event, this);
+                });
+
+                jQuery('#profile form').submit(function (event) {
+                    openid.profile.save(event, this);
                 });
             });
         </script>
