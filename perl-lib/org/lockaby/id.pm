@@ -78,10 +78,11 @@ sub is_valid_username {
         SELECT COUNT(*) FROM users WHERE username = LOWER(?) AND is_enabled = 1
     |);
     $sth->execute($args{username});
-    my ($user_exists_flag) = $sth->fetchrow();
+    my ($count) = $sth->fetchrow();
     $sth->finish();
 
-    return $user_exists_flag;
+    return 1 if ($count > 0);
+    return 0;
 }
 
 sub is_valid_password {
@@ -93,12 +94,12 @@ sub is_valid_password {
     );
 
      my $sth = $self->dbh()->prepare_cached(q|
-         SELECT COUNT(*) FROM users WHERE username = LOWER(?) AND password = ? AND is_enabled = 1
+         SELECT COUNT(*) FROM users WHERE username = LOWER(?) AND password = MD5(?) AND is_enabled = 1
      |);
-     $sth->execute($args{username}, org::lockaby::utilities::get_md5_from_string($args{password}));
+     $sth->execute($args{username}, $args{password});
      my ($count) = $sth->fetchrow();
      $sth->finish();
- 
+
      return 1 if ($count > 0);
      return 0;
 }
@@ -286,30 +287,6 @@ sub get_server {
             return $secret;
         },
     );
-}
-
-sub check_forged_headers {
-    my ($self, $a, $b) = @_;
-
-    return 1 unless defined($a);
-    return 1 unless defined($b);
-
-    return 1 unless (ref($a) eq "HASH");
-    return 1 unless (ref($b) eq "HASH");
-
-    return 1 unless (defined($a->{ns})         && defined($b->{ns}));
-    return 1 unless (defined($a->{return_to})  && defined($b->{return_to}));
-    return 1 unless (defined($a->{identity})   && defined($b->{identity}));
-    return 1 unless (defined($a->{realm})      && defined($b->{realm}));
-    return 1 unless (defined($a->{trust_root}) && defined($b->{trust_root}));
-
-    return 1 unless ($a->{ns}         eq $b->{ns});
-    return 1 unless ($a->{return_to}  eq $b->{return_to});
-    return 1 unless ($a->{identity}   eq $b->{identity});
-    return 1 unless ($a->{realm}      eq $b->{realm});
-    return 1 unless ($a->{trust_root} eq $b->{trust_root});
-
-    return 0;
 }
 
 1;

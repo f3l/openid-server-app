@@ -508,7 +508,7 @@ sub get_profile {
                     <div class="row">
                         <div class="label">Email Address:</div>
                         <div class="value">
-                            <input type="text" value="${email_address}" name="email_address"/>
+                            <input type="text" value="${\((defined($email_address) ? $email_address : ""))}" name="email_address"/>
                         </div>
                         <div class="clear"></div>
                     </div>
@@ -516,7 +516,7 @@ sub get_profile {
                     <div class="row">
                         <div class="label">Full Name:</div>
                         <div class="value">
-                            <input type="text" value="${fullname}" name="fullname"/>
+                            <input type="text" value="${\((defined($fullname) ? $fullname : ""))}" name="fullname"/>
                         </div>
                         <div class="clear"></div>
                     </div>
@@ -524,7 +524,7 @@ sub get_profile {
                     <div class="row">
                         <div class="label">Nickname:</div>
                         <div class="value">
-                            <input type="text" value="${nickname}" name="nickname"/>
+                            <input type="text" value="${\((defined($nickname) ? $nickname : ""))}" name="nickname"/>
                         </div>
                         <div class="clear"></div>
                     </div>
