@@ -4,7 +4,7 @@ baseTZ = GMT
 siteTZ = America/New_York
 
 # database username/password
-db_username = pub
-db_password = password
+db_username = openid_user
+db_password = newpass
 db_database = openid
 db_host = localhost
