@@ -32,7 +32,7 @@ CONFIGURING MYSQL
 
   mysql -u root -p
   > create database openid;
-  > grant all on openid.* to openid_user'%';
+  > grant all on openid.* to openid_user@'%';
   > set password for openid_user@'%' = PASSWORD('newpass');
   > flush privileges;
   > exit;
@@ -44,7 +44,7 @@ CONFIGURING MYSQL
 3. Create a user in the new application:
 
   mysql -u openid_user -p --database=openid
-  > insert into users (username, password, created) values ('newuser', MD5('newpass'), NOW());
+  > insert into users (username, password, created, is_enabled, is_manager) values ('newuser', MD5('newpass'), NOW(), 1, 1);
   > exit;
 
 Obviously you should change 'newuser' to be the username that you want to use
