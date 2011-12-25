@@ -133,7 +133,7 @@ sub is_logged_in {
         $sth->finish();
 
         # set a session user name
-        $self->{session}->set('username', $username);
+        $self->{session}->set('username', $username) if $logged_in_flag;
     }
 
     # if the session username exists then the user is logged in

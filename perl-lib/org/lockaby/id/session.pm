@@ -70,35 +70,7 @@ sub new {
     );
     $session_cookie_jar->bake($args{r});
 
-    # remove stale sessions
-    eval { $self->clear_stale(); };
-
     return $self;
-}
-
-sub clear_stale {
-    my ($self) = @_;
-
-    my $sth = $self->{dbh}->prepare(q|
-        SELECT id FROM sessions
-    |);
-    $sth->execute();
-    while (my ($id) = $sth->fetchrow()) {
-        # otherwise, create a new session
-        my %data = ();
-        tie(%data, 'Apache::Session::MySQL', $id, {
-            Handle      => $self->{dbh},
-            LockHandle  => $self->{dbh},
-            TableName   => 'sessions',
-            Transaction => 1,
-        });
-
-        # if the session is 30 minutes out of date, delete it
-        if (defined($data{timestamp}) && $data{timestamp} < (time() - 1800)) {
-            tied(%data)->delete();
-        }
-    }
-    $sth->finish();
 }
 
 sub delete {
