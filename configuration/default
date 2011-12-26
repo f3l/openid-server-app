@@ -3,6 +3,10 @@ url = pub.lockaby.org
 baseTZ = GMT
 siteTZ = America/New_York
 
+# what user engine will we use
+engine = org::lockaby::id::users::pwauth
+#engine = org::lockaby::id::users::mysql
+
 # database username/password
 db_username = openid_user
 db_password = newpass

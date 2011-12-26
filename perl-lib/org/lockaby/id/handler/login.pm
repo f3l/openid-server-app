@@ -65,15 +65,8 @@ sub get_login {
             # default: go to the login page
             $location = "https://" . $config->{url} . "/openid/login";
 
-            # if this is coming as an openid request then verify the parameters match
-            # with what was submitted earlier
-            my $openid_data = $session->get('openid');
-            if (!$engine->check_forged_headers($openid_data, $params)) {
-                # send back to the originator's cancel url
-                $location = $openid->cancel_return_url(return_to => $params->{return_to});
-            } else {
-                die "Detected forged OpenID headers.\n";
-            }
+            # get the link to the cancel page
+            $location = $openid->cancel_return_url(return_to => $params->{return_to});
 
             $dbh->commit();
         };
@@ -106,8 +99,20 @@ sub get_login {
             my $success2 = $engine->is_valid_password(username => $username, password => $password);
             die "Invalid username/password.\n" unless ($success2);
 
-            # get the user's id for the logs
-            my $user_id = $engine->get_user_id(username => $username);
+            # get the user's user id
+            my $get_id_sth = $dbh->prepare(q|
+                SELECT id FROM users WHERE username = LOWER(?)
+            |);
+            $get_id_sth->execute($username);
+            my ($user_id) = $get_id_sth->fetchrow();
+            $get_id_sth->finish();
+
+            # record in the users table
+            my $update_users_sth = $dbh->prepare_cached(q|
+                UPDATE users SET logged = NOW() WHERE id = ?
+            |);
+            $update_users_sth->execute($user_id);
+            $update_users_sth->finish();
 
             my $log_sth = $dbh->prepare(q|
                 INSERT INTO log (user_id, trusted_id, ip_address, useragent, logged)
@@ -116,12 +121,9 @@ sub get_login {
             $log_sth->execute($user_id, undef, $ENV{REMOTE_ADDR}, $ENV{HTTP_USER_AGENT});
             $log_sth->finish();
 
-            # record in the users table
-            my $update_users_sth = $dbh->prepare_cached(q|
-                UPDATE users SET logged = NOW() WHERE id = ?
-            |);
-            $update_users_sth->execute($user_id);
-            $update_users_sth->finish();
+            $session->set('authorized', 1);
+            $session->set('user_id', $user_id);
+            $session->set('username', $username);
 
             # set a cookie with the new session key in it
             if ($remember) {
@@ -154,9 +156,6 @@ sub get_login {
                 $session_cookie_jar->bake($r);
             }
 
-            # two ways to stay logged in: special cookie or the session
-            $session->set('username', $username);
-
             $dbh->commit();
         };
         if ($@) {
@@ -175,18 +174,13 @@ sub get_login {
             # default: go to the profile
             $location = "https://" . $config->{url} . "/openid/profile";
 
-            # if this is coming as an openid request then verify the parameters match
+            # if this is coming as an openid request then send it to the trust page
             # with what was submitted earlier
             my $realm = $params->{realm};
-            my $openid_data = $session->get('openid');
-            if (defined($realm) && defined($openid_data)) {
-                if (!$engine->check_forged_headers($openid_data, $params)) {
-                    # go to the page where we check for a trusted realm
-                    $location = "https://" . $config->{url} . "/openid/trust";
-                    $location .= '?' . join('&', map { $_ . '=' . uri_escape(defined $params->{$_} ? $params->{$_} : '') } keys %{$params});
-                } else {
-                    die "Detected forged OpenID headers.\n";
-                }
+            if (defined($realm)) {
+                # go to the page where we check for a trusted realm
+                $location = "https://" . $config->{url} . "/openid/trust";
+                $location .= '?' . join('&', map { $_ . '=' . uri_escape(defined $params->{$_} ? $params->{$_} : '') } keys %{$params});
             }
 
             $dbh->commit();

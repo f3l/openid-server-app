@@ -49,7 +49,7 @@ sub get_profile {
     }
 
     # figure out who we are
-    my $username = $engine->get_username();
+    my $username = $session->get('username');
     if (!$engine->is_valid_username(username => $username)) {
         $r->headers_out->set(Location => "https://" . $config->{url} . "/openid/login");
         $r->status(Apache2::Const::REDIRECT);
@@ -112,18 +112,20 @@ sub get_profile {
                 $save_sth->execute($email_address, $fullname, $nickname, $username);
                 $save_sth->finish();
 
-                my $password1 = $q->param('password1');
-                my $password2 = $q->param('password2');
+                if ($engine->is_password_changeable()) {
+                    my $password1 = $q->param('password1');
+                    my $password2 = $q->param('password2');
 
-                if (defined($password1) && defined($password2)) {
-                    $password1 =~ s/^\s+|\s+$//g;
-                    $password2 =~ s/^\s+|\s+$//g;
+                    if (defined($password1) && defined($password2)) {
+                        $password1 =~ s/^\s+|\s+$//g;
+                        $password2 =~ s/^\s+|\s+$//g;
 
-                    if (length($password1) && length($password2)) {
-                        if ($password1 eq $password2) {
-                            $engine->change_password(username => $username, password => $password1);
-                        } else {
-                            die "Passwords do not match.\n";
+                        if (length($password1) && length($password2)) {
+                            if ($password1 eq $password2) {
+                                $engine->change_password(username => $username, password => $password1);
+                            } else {
+                                die "Passwords do not match.\n";
+                            }
                         }
                     }
                 }
@@ -136,17 +138,13 @@ sub get_profile {
 
                 if (defined($action) && $action eq "create") {
                     my $username = $q->param('username');
-                    my $password1 = $q->param('password1');
-                    my $password2 = $q->param('password2');
                     my $is_manager = $q->param('is_manager');
                     my $is_enabled = $q->param('is_enabled');
 
-                    if (defined($username) && defined($password1) && defined($password2)) {
+                    if (defined($username)) {
                         $username =~ s/^\s+|\s+$//g;
-                        $password1 =~ s/^\s+|\s+$//g;
-                        $password2 =~ s/^\s+|\s+$//g;
 
-                        if (length($username) && length($password1) && length($password2) && $password1 eq $password2) {
+                        if (length($username)) {
                             my $create_user_sth = $dbh->prepare_cached(q|
                                 INSERT INTO users (username, created, is_manager, is_enabled)
                                            VALUES (LOWER(?), NOW(), ?, ?)
@@ -154,14 +152,12 @@ sub get_profile {
                             $create_user_sth->execute($username, $is_manager, $is_enabled);
                             $create_user_sth->finish();
 
-                            $engine->change_password(username => $username, password => $password1);
-
                             $content = 'success';
                         } else {
-                            die "Could not create user. No username or password given.\n";
+                            die "Could not create user. No username given.\n";
                         }
                     } else {
-                        die "Could not create user. No username or password given.\n";
+                        die "Could not create user. No username given.\n";
                     }
                 }
 
@@ -224,13 +220,19 @@ sub get_profile {
 
                     if (defined($username)) {
                         $username =~ s/^\s+|\s+$//g;
-                        $password1 =~ s/^\s+|\s+$//g if defined($password1);
-                        $password2 =~ s/^\s+|\s+$//g if defined($password2);
 
-                        if (length($username) && $password1 eq $password2) {
-                            $engine->change_password(username => $username, password => $password1);
+                        if (length($username)) {
+                            $password1 =~ s/^\s+|\s+$//g if defined($password1);
+                            $password2 =~ s/^\s+|\s+$//g if defined($password2);
 
-                            $content = 'success';
+                            # users can be given an empty password
+                            if ($password1 eq $password2) {
+                                $engine->change_password(username => $username, password => $password1);
+
+                                $content = 'success';
+                            } else {
+                                die "Could not change password. Passwords do not match.\n";
+                            }
                         } else {
                             die "Could not change password. No username given.\n";
                         }
@@ -314,6 +316,7 @@ sub get_profile {
 
     my $management_tab_link = "";
     my $management_tab_content = "";
+    my $management_tab_script = "";
 
     if ($is_manager) {
         my $count_sessions_sth = $dbh->prepare_cached("SELECT COUNT(*) FROM sessions");
@@ -344,13 +347,14 @@ sub get_profile {
             my $is_manager_checkbox = "";
             $is_manager_checkbox = q|checked="checked"| if ($all_users_is_manager);
 
+            my $change_password_link = "";
+            $change_password_link = '[<a href="javascript:void(0);" onclick="openid.management.password.change(this);">change password</a>]' if $engine->is_password_changeable();
+
             push(@users, qq|
                 <div class="row">
                     <div class="user">
                         <div class="username">${all_users_username}</div>
-                        <div class="password">
-                            [<a href="javascript:void(0);" onclick="openid.management.password.change(this);">change password</a>]
-                        </div>
+                        <div class="password">${change_password_link}</div>
                         <div class="clear"></div>
                     </div>
                     <div class="is">
@@ -365,9 +369,90 @@ sub get_profile {
         }
         $all_users_sth->finish();
 
+        my $create_user_html = "";
+        if ($engine->is_user_createable()) {
+            my $create_user_password_html = "";
+            if ($engine->is_password_changeable()) {
+                $create_user_password_html = q|
+                    <div class="label">Password:</div>
+                    <div class="value">
+                        <input type="password" name="password1" value=""/>
+                    </div>
+                    <div class="clear"></div>
+
+                    <div class="label">Verify Password:</div>
+                    <div class="value">
+                        <input type="password" name="password2" value=""/>
+                    </div>
+                    <div class="clear"></div>
+                |;
+            }
+
+            $create_user_html = qq|
+                <div class="create">
+                    <div class="header">
+                        <div class="username">Create New User</div>
+                        <div class="is">Is manager?</div>
+                        <div class="is">Is enabled?</div>
+                        <div class="clear"></div>
+                    </div>
+                    <div class="row">
+                        <div class="user">
+                            <div class="label">Username:</div>
+                            <div class="value">
+                                <input type="text" name="username" value=""/>
+                            </div>
+                            <div class="clear"></div>
+
+                            <!-- can the user change the password -->
+                            ${create_user_password_html}
+                        </div>
+                        <div class="is">
+                            <input type="checkbox" name="is_manager"/>
+                        </div>
+                        <div class="is">
+                            <input type="checkbox" name="is_enabled" checked="checked"/>
+                        </div>
+                        <div class="clear"></div>
+                    </div>
+                </div>
+            |;
+        }
+
+        my $change_password_html = "";
+        if ($engine->is_password_changeable()) {
+            $change_password_html = q|
+                <div class="change">
+                    <div class="username">
+                        Changing password for <span class="username"></span>.
+                    </div>
+
+                    <div class="label">Password:</div>
+                    <div class="value">
+                        <input type="password" name="password1" value=""/>
+                    </div>
+                    <div class="clear"></div>
+
+                    <div class="label">Verify Password:</div>
+                    <div class="value">
+                        <input type="password" name="password2" value=""/>
+                    </div>
+                    <div class="clear"></div>
+                </div>
+            |;
+        }
+
+        my $change_password_script = "";
+        if ($engine->is_password_changeable()) {
+            $change_password_script = q|
+                openid.management.password.create();
+            |;
+        }
+
         $management_tab_link = q|
             <li><a href="#management">Management</a></li>
         |;
+
         $management_tab_content = qq|
             <div id="management">
                 <ul>
@@ -396,65 +481,55 @@ sub get_profile {
                         ${\join("", @users)}
                     </div>
 
-                    <div class="create">
-                        <div class="header">
-                            <div class="username">Create New User</div>
-                            <div class="is">Is manager?</div>
-                            <div class="is">Is enabled?</div>
-                            <div class="clear"></div>
-                        </div>
-                        <div class="row">
-                            <div class="user">
-                                <div class="label">Username:</div>
-                                <div class="value">
-                                    <input type="text" name="username" value=""/>
-                                </div>
-                                <div class="clear"></div>
+                    <!-- create user, if users are createable -->
+                    ${create_user_html}
 
-                                <div class="label">Password:</div>
-                                <div class="value">
-                                    <input type="password" name="password1" value=""/>
-                                </div>
-                                <div class="clear"></div>
-
-                                <div class="label">Verify Password:</div>
-                                <div class="value">
-                                    <input type="password" name="password2" value=""/>
-                                </div>
-                                <div class="clear"></div>
-                            </div>
-                            <div class="is">
-                                <input type="checkbox" name="is_manager"/>
-                            </div>
-                            <div class="is">
-                                <input type="checkbox" name="is_enabled" checked="checked"/>
-                            </div>
-                            <div class="clear"></div>
-                        </div>
-                    </div>
+                    <!-- change password, if the password is changeable -->
+                    ${change_password_html}
 
                     <div style="text-align: center;">
                         <input type="submit" name="save" value="save"/>
                     </div>
                 </form><br/>
+            </div>
+        |;
 
-                <div class="change">
-                    <div class="username">
-                        Changing password for <span class="username"></span>.
-                    </div>
+        $management_tab_script = qq|
+            ${change_password_script}
 
-                    <div class="label">Password:</div>
-                    <div class="value">
-                        <input type="password" name="password1" value=""/>
-                    </div>
-                    <div class="clear"></div>
+            jQuery('#management form').submit(function (event) {
+                // save a new user
+                openid.management.save(event, this);
+            });
+            jQuery('#management form input[type="checkbox"]').change(function (event) {
+                // toggle an existing user
+                openid.management.toggle(event, this);
+            });
+        |;
+    }
 
-                    <div class="label">Verify Password:</div>
-                    <div class="value">
-                        <input type="password" name="password2" value=""/>
-                    </div>
-                    <div class="clear"></div>
+    my $profile_password_change = "";
+    if ($engine->is_password_changeable()) {
+        $profile_password_change = q|
+            <div class="row" style="text-align: center;">
+                Enter a new password to change your password.<br/>
+                Enter no password to leave your password as it is.<br/>
+            </div>
+
+            <div class="row">
+                 <div class="label">Password:</div>
+                 <div class="value">
+                     <input type="password" value="" name="password1"/>
+                 </div>
+                 <div class="clear"></div>
+            </div>
+
+            <div class="row">
+                <div class="label">Verify Password:</div>
+                <div class="value">
+                    <input type="password" value="" name="password2"/>
                 </div>
+                <div class="clear"></div>
             </div>
         |;
     }
@@ -529,26 +604,8 @@ sub get_profile {
                         <div class="clear"></div>
                     </div>
 
-                    <div class="row" style="text-align: center;">
-                        Enter a new password to change your password.<br/>
-                        Enter no password to leave your password as it is.<br/>
-                    </div>
-
-                    <div class="row">
-                        <div class="label">Password:</div>
-                        <div class="value">
-                            <input type="password" value="" name="password1"/>
-                        </div>
-                        <div class="clear"></div>
-                    </div>
-
-                    <div class="row">
-                        <div class="label">Verify Password:</div>
-                        <div class="value">
-                            <input type="password" value="" name="password2"/>
-                        </div>
-                        <div class="clear"></div>
-                    </div>
+                    <!-- if the user can change his or her password, it goes here -->
+                    ${profile_password_change}
 
                     <div style="text-align: center;">
                         <input type="submit" name="save" value="save"/>
@@ -561,15 +618,8 @@ sub get_profile {
             jQuery(document).ready(function() {
                 jQuery('#tabs').tabs();
 
-                openid.management.password.create();
-                jQuery('#management form').submit(function (event) {
-                    // save a new user
-                    openid.management.save(event, this);
-                });
-                jQuery('#management form input[type="checkbox"]').change(function (event) {
-                    // toggle an existing user
-                    openid.management.toggle(event, this);
-                });
+                // add javascript for management here, if necessary
+                ${management_tab_script}
 
                 jQuery('#trusted form').submit(function (event) {
                     openid.trusted.remove(event, this);

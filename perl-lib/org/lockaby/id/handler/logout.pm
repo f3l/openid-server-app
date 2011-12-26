@@ -52,27 +52,29 @@ sub get_logout {
             my $cookie = $jar->cookies(org::lockaby::id::COOKIE_NAME_AUTOLOGIN);
             if (defined($cookie)) {
                 my $pieces = thaw($cookie->value());
-                my $username = $pieces->{username};
                 my $secret = $pieces->{secret};
 
-                my $user_id = $engine->get_user_id(username => $username);
+                my $user_id = $session->get('user_id');
+                my $username = $session->get('username');
 
-                my $delete_secret_sth = $dbh->prepare_cached(q|
-                    DELETE FROM autologin WHERE user_id = ? AND secret = ?
-                |);
-                $delete_secret_sth->execute($user_id, $secret);
-                $delete_secret_sth->finish();
+                if ($pieces->{username} eq $username) {
+                    my $delete_secret_sth = $dbh->prepare_cached(q|
+                        DELETE FROM autologin WHERE user_id = ? AND secret = ?
+                    |);
+                    $delete_secret_sth->execute($user_id, $secret);
+                    $delete_secret_sth->finish();
 
-                my $session_cookie_jar = Apache2::Cookie->new(
-                    $r,
-                    -name => org::lockaby::id::COOKIE_NAME_AUTOLOGIN,
-                    -value => "",
-                    -secure => 1,
-                    -httponly => 1,
-                    -path => '/openid',
-                    -expires => 0,
-                );
-                $session_cookie_jar->bake($r);
+                    my $session_cookie_jar = Apache2::Cookie->new(
+                        $r,
+                        -name => org::lockaby::id::COOKIE_NAME_AUTOLOGIN,
+                        -value => "",
+                        -secure => 1,
+                        -httponly => 1,
+                        -path => '/openid',
+                        -expires => 0,
+                    );
+                    $session_cookie_jar->bake($r);
+                }
             }
 
             # log the user out in the session, too

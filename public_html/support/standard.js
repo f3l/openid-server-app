@@ -128,14 +128,16 @@ openid.trusted.checked = function (event, checkbox) {
 openid.profile.save = function (event, form) {
     event.preventDefault();
 
-    // verify that the passwords match
     var password1_obj = jQuery(form).find('input[name="password1"]');
     var password2_obj = jQuery(form).find('input[name="password2"]');
 
-    if (jQuery.trim(password1_obj.val()) !== jQuery.trim(password2_obj.val())) {
-        alert('Your passwords must match.');
-        password1_obj.focus();
-        return false;
+    if (password1_obj && password2_obj) {
+        // verify that the passwords match
+        if (jQuery.trim(password1_obj.val()) !== jQuery.trim(password2_obj.val())) {
+            alert('Your passwords must match.');
+            password1_obj.focus();
+            return false;
+        }
     }
 
     jQuery.ajax({
@@ -149,7 +151,7 @@ openid.profile.save = function (event, form) {
             'fullname': jQuery(form).find('input[name="fullname"]').val(),
             'nickname': jQuery(form).find('input[name="nickname"]').val(),
             'password1': jQuery.trim(password1_obj.val()),
-            'password2': jQuery.trim(password2_obj.val()),
+            'password2': jQuery.trim(password2_obj.val())
         },
         error: function () {
             alert('There was a server error when trying to save your profile.');
@@ -213,14 +215,8 @@ openid.management.save = function (event, form) {
     var is_manager = jQuery(row).find('input[type="checkbox"][name="is_manager"]').is(':checked');
     var is_enabled = jQuery(row).find('input[type="checkbox"][name="is_enabled"]').is(':checked');
 
-    // verify that the passwords match
     var username_obj = jQuery(form).find('input[name="username"]');
-    var password1_obj = jQuery(form).find('input[name="password1"]');
-    var password2_obj = jQuery(form).find('input[name="password2"]');
-
     var username = jQuery.trim(username_obj.val());
-    var password1 = jQuery.trim(password1_obj.val());
-    var password2 = jQuery.trim(password2_obj.val());
 
     if (!username) {
         alert('You must enter a username.');
@@ -228,10 +224,18 @@ openid.management.save = function (event, form) {
         return false;
     }
 
-    if (password1 !== password2) {
-        alert('New passwords must match.');
-        password1_obj.focus();
-        return false;
+    var password1_obj = jQuery(form).find('input[name="password1"]');
+    var password2_obj = jQuery(form).find('input[name="password2"]');
+
+    if (password1_obj && password2_obj) {
+        var password1 = jQuery.trim(password1_obj.val());
+        var password2 = jQuery.trim(password2_obj.val());
+
+        if (password1 !== password2) {
+            alert('New passwords must match.');
+            password1_obj.focus();
+            return false;
+        }
     }
 
     jQuery.ajax({
@@ -362,12 +366,7 @@ openid.management.password.create = function () {
 openid.management.password.save = function () {
     var form = this;
 
-    var password1_obj = jQuery(this).find('input.password1');
-    var password2_obj = jQuery(this).find('input.password2');
     var username_obj = jQuery(this).find('span.username');
-
-    var password1 = jQuery.trim(password1_obj.val());
-    var password2 = jQuery.trim(password2_obj.val());
     var username = jQuery.trim(username_obj.text());
 
     if (!username) {
@@ -375,10 +374,18 @@ openid.management.password.save = function () {
         return false;
     }
 
-    if (password1 !== password2) {
-        alert('The two passwords do not match.');
-        password1_obj.focus();
-        return false;
+    var password1_obj = jQuery(this).find('input.password1');
+    var password2_obj = jQuery(this).find('input.password2');
+
+    if (password1_obj && password2_obj) {
+        var password1 = jQuery.trim(password1_obj.val());
+        var password2 = jQuery.trim(password2_obj.val());
+
+        if (password1 !== password2) {
+            alert('The two passwords do not match.');
+            password1_obj.focus();
+            return false;
+        }
     }
 
     jQuery.ajax({

@@ -53,7 +53,7 @@ sub get_trust {
     my @errors = ();
 
     # see if the username is valid, if not then kick back to login page
-    my $username = $engine->get_username();
+    my $username = $session->get('username');
     if (!$engine->is_valid_username(username => $username)) {
         $r->headers_out->set(Location => "https://" . $config->{url} . "/openid/login");
         $r->status(Apache2::Const::REDIRECT);
@@ -68,6 +68,19 @@ sub get_trust {
         return Apache2::Const::REDIRECT;
     }
 
+    # get email/nickname/fullname from database so we can use them for any sreg requests
+    my $sreg_available = {};
+    my $sreg_sth = $dbh->prepare(q|
+        SELECT email_address, nickname, fullname
+        FROM users
+        WHERE username = LOWER(?)
+    |);
+    $sreg_sth->execute($username);
+    ($sreg_available->{email},
+     $sreg_available->{nickname},
+     $sreg_available->{fullname}) = $sreg_sth->fetchrow();
+    $sreg_sth->finish();
+
     # cancel the login
     if (defined($submit) && $submit eq "cancel") {
         my $location = undef;
@@ -76,17 +89,8 @@ sub get_trust {
             # default: go to the login page
             $location = "https://" . $config->{url} . "/openid/login";
 
-            # if this is coming as an openid request then verify the parameters match
-            # with what was submitted earlier
-            my $openid_data = $session->get('openid');
-            if (defined($openid_data)) {
-                if (!$engine->check_forged_headers($openid_data, $params)) {
-                    # send back to the originator's cancel url
-                    $location = $openid->cancel_return_url(return_to => $params->{return_to});
-                } else {
-                    die "Detected forged OpenID headers.\n";
-                }
-            }
+            # get the link to the cancel page
+            $location = $openid->cancel_return_url(return_to => $params->{return_to});
 
             $dbh->commit();
         };
@@ -107,7 +111,7 @@ sub get_trust {
     if (defined($submit) && $submit eq "trust") {
         eval {
             # get the user id to be used in sql statements more easily
-            my $user_id = $engine->get_user_id(username => $username);
+            my $user_id = $session->get('user_id');
 
             my $save_sth = $dbh->prepare_cached(q|
                 INSERT IGNORE INTO trusted (user_id, realm, authorized, created, logged)
@@ -139,54 +143,46 @@ sub get_trust {
             # default: go to the profile
             $location = "https://" . $config->{url} . "/openid/profile";
 
-            # if this is coming as an openid request then verify the parameters match
-            # with what was submitted earlier
-            my $openid_data = $session->get('openid');
-            if (defined($openid_data)) {
-                if (!$engine->check_forged_headers($openid_data, $params)) {
-                    # go to the trusted site now
-                    my $user_id = $engine->get_user_id(username => $username);
-                    my $trusted_id = $engine->get_trusted_id(realm => $realm);
+            # go to the trusted site now
+            my $user_id = $session->get('user_id');
+            my $trusted_id = $engine->get_trusted_id(realm => $realm);
 
-                    # log this trusted site access
-                    my $log_sth = $dbh->prepare(q|
-                        INSERT INTO log (user_id, trusted_id, ip_address, useragent, logged)
-                                 VALUES (?, ?, ?, ?, NOW())
-                    |);
-                    $log_sth->execute($user_id, $trusted_id, $ENV{REMOTE_ADDR}, $ENV{HTTP_USER_AGENT});
-                    $log_sth->finish();
+            # log this trusted site access
+            my $log_sth = $dbh->prepare(q|
+                INSERT INTO log (user_id, trusted_id, ip_address, useragent, logged)
+                         VALUES (?, ?, ?, ?, NOW())
+            |);
+            $log_sth->execute($user_id, $trusted_id, $ENV{REMOTE_ADDR}, $ENV{HTTP_USER_AGENT});
+            $log_sth->finish();
 
-                    my $update_trusted_sth = $dbh->prepare(q|
-                        UPDATE trusted SET logged = NOW() WHERE id = ?
-                    |);
-                    $update_trusted_sth->execute($trusted_id);
-                    $update_trusted_sth->finish();
+            my $update_trusted_sth = $dbh->prepare(q|
+                UPDATE trusted SET logged = NOW() WHERE id = ?
+            |);
+            $update_trusted_sth->execute($trusted_id);
+            $update_trusted_sth->finish();
 
-                    # get email/nickname/fullname from database and put them into "additional fields"
-                    my $sreg_sth = $dbh->prepare(q|
-                        SELECT email_address, nickname, fullname
-                        FROM users
-                        WHERE username = LOWER(?)
-                    |);
-                    $sreg_sth->execute($username);
-                    my ($email_address, $nickname, $fullname) = $sreg_sth->fetchrow();
-                    $sreg_sth->finish();
+            # get email/nickname/fullname from database and put them into "additional fields"
+            my $sreg = {};
+            $sreg->{'ns.sreg'} = "http://openid.net/extensions/sreg/1.1";
 
-                    my $sreg = {};
-                    $sreg->{'sreg.nickname'} = $nickname if defined($nickname);
-                    $sreg->{'sreg.fullname'} = $fullname if defined($fullname);
-                    $sreg->{'sreg.email'} = $email_address if defined($email_address);
+            # give the sreg values that were requested
+            # then delete all sreg data from the params that we are sending back
+            foreach my $key (keys %{$params}) {
+                next unless $key =~ m/^sreg[\.\-](.*)$/;
+                my $field = $1;
+                my $value = delete($params->{$key});
 
-                    # assign an "identity" to the user
-                    # this is what the remote application will know us as
-                    $params->{identity} = 'http://' . $config->{url} . '/' . $username;
-                    $params->{additional_fields} = $sreg;
-
-                    $location = $openid->signed_return_url(%{$params});
-                } else {
-                    die "Detected forged OpenID headers.\n";
+                if ($key =~ /^sreg\-.*$/ && $sreg_available->{$field} && $value) {
+                    $sreg->{"sreg.${field}"} = $sreg_available->{$field};
                 }
             }
+
+            # assign an "identity" to the user
+            # this is what the remote application will know us as
+            $params->{identity} = 'http://' . $config->{url} . '/' . $username;
+            $params->{additional_fields} = $sreg;
+
+            $location = $openid->signed_return_url(%{$params});
 
             $dbh->commit();
         };
@@ -200,6 +196,53 @@ sub get_trust {
             $r->headers_out->set(Location => $location);
             $r->status(Apache2::Const::REDIRECT);
             return Apache2::Const::REDIRECT;
+        }
+    }
+
+    # build some html to see if the requesting site would like some sreg information
+    my @sreg_desired = ();
+    if (defined($params->{'sreg.optional'})) {
+        foreach my $sreg_field (split(/,/, $params->{'sreg.optional'})) {
+            $sreg_field =~ s/^\s+|\s+$//g;
+            next unless length($sreg_field);
+            push(@sreg_desired, $sreg_field);
+        }
+    }
+    if (defined($params->{'sreg.required'})) {
+        foreach my $sreg_field (split(/,/, $params->{'sreg.required'})) {
+            $sreg_field =~ s/^\s+|\s+$//g;
+            next unless length($sreg_field);
+            push(@sreg_desired, $sreg_field);
+        }
+    }
+
+    my $sreg_requested = "";
+    if (scalar(@sreg_desired)) {
+        my @sreg_requested = ();
+        foreach my $sreg_field (sort @sreg_desired) {
+            # only work with things we support
+            next unless $sreg_available->{$sreg_field};
+
+            push(@sreg_requested, qq|
+                <div class="sreg">
+                    <input type="checkbox" name="sreg-${sreg_field}" value="1" id="sreg-${sreg_field}"/>
+                    <label for="sreg-${sreg_field}">${\ucfirst($sreg_field)}: ${\$sreg_available->{$sreg_field}}</label>
+                </div>
+            |);
+        }
+
+        if (scalar(@sreg_requested)) {
+            $sreg_requested =  qq|
+                The site is also requesting this information:
+
+                <div class="information">
+                    ${\join("\n", @sreg_requested)}
+                </div>
+
+                If you choose to not provide this information, the site
+                should still work and you should not be asked again for
+                this information.<br/><br/>
+            |;
         }
     }
 
@@ -220,18 +263,20 @@ sub get_trust {
                 <div class="error">${\join("<br/>", @errors)}</div>
 
                 <div style="text-align: center;">
-                    You are logged in as:<br/><br/>
-                    <b>${username}</b><br/><br/>
+                    You are logged in as:<br/>
+                    <div class="information">${username}</div>
 
-                    This site would like you to trust it:<br/><br/>
-                    <b>${realm}</b><br/><br/>
+                    This site would like you to trust it:<br/>
+                    <div class="information">${realm}</div>
 
                     By trusting this site, you are allowing it to access
-                    your OpenID for the purposes of authentication.<br/>
+                    your OpenID for the purposes of authentication. This
+                    site will never see your username or password, only
+                    your OpenID.<br/><br/>
 
-                    This site will never see your username or password,
-                    only your OpenID.<br/>
-                </div><br/>
+                    <!-- is the site requesting any information about us? -->
+                    ${sreg_requested}
+                </div>
 
                 <div style="text-align: center;">
                     <input type="hidden" name="submit" value="true"/>

@@ -44,8 +44,19 @@ HR {
 }
 
 #login {
-    width: 300px;
+    width: 400px;
     margin: 0px auto;
+}
+
+#login div.information {
+    font-weight: bold;
+    margin: 8px 0px;
+}
+
+#login div.sreg {
+    width: 260px;
+    margin: 0px auto;
+    text-align: left;
 }
 
 #login .error {
@@ -218,10 +229,6 @@ div.change > div.clear {
 
 #management div.row > div.user > div.value > input {
     width: 165px;
-}
-
-#management div.row > div.user > div.clear {
-    clear: both;
 }
 
 #profile {

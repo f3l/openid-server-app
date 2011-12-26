@@ -10,6 +10,7 @@ use constant COOKIE_NAME_AUTOLOGIN => 'OPENID_USER';
 
 use Storable qw(thaw);
 use Net::OpenID::Server;
+use Module::Load;
 
 use org::lockaby::utilities;
 
@@ -24,12 +25,19 @@ sub new {
         @_,
     );
 
+    my $module = $args{config}->{engine};
+    die "No user engine configured." unless defined($module);
+
+    $module =~ s/^\s+|\s+$//g;
+    die "No user engine configured." unless length($module);
+
     my $self = {
         r => $args{r},
         q => $args{q},
         dbh => $args{dbh},
         config => $args{config},
         session => $args{session},
+        module => $module,
     };
     bless ($self, $class);
     return $self;
@@ -50,6 +58,22 @@ sub dbh {
     return $self->{dbh};
 }
 
+sub is_password_changeable {
+    my $self = shift;
+
+    load($self->{module});
+    my $obj = $self->{module}->new(dbh => $self->{dbh});
+    return $obj->is_password_changeable();
+}
+
+sub is_user_createable {
+    my $self = shift;
+
+    load($self->{module});
+    my $obj = $self->{module}->new(dbh => $self->{dbh});
+    return $obj->is_user_createable();
+}
+
 sub change_password {
     my $self = shift;
     my %args = (
@@ -58,13 +82,39 @@ sub change_password {
         @_,
     );
 
-    my $sth = $self->dbh()->prepare_cached(q|
-        UPDATE users SET password = MD5(?) WHERE username = LOWER(?)
-    |);
-    $sth->execute($args{password}, $args{username});
-    $sth->finish();
+    my $username = $args{username};
+    my $password = $args{password};
+    die "No username given." unless defined($username);
+    die "No password given." unless defined($password);
 
-    return 1;
+    $username =~ s/^\s+|\s+$//g;
+    $password =~ s/^\s+|\s+$//g;
+    die "No username given." unless length($username);
+    die "No password given." unless length($password);
+
+    load($self->{module});
+    my $obj = $self->{module}->new(dbh => $self->{dbh});
+    return $obj->change_password(username => $username, password => $password);
+}
+
+sub create_user {
+    my $self = shift;
+    my %args = (
+        username => undef,
+        is_manager => undef,
+        is_enabled => undef,
+        @_,
+    );
+
+    my $username = $args{username};
+    die "No username given." unless defined($username);
+
+    $username =~ s/^\s+|\s+$//g;
+    die "No username given." unless length($username);
+
+    load($self->{module});
+    my $obj = $self->{module}->new(dbh => $self->{dbh});
+    return $obj->create_user(username => $username, is_manager => $args{is_manager}, is_enabled => $args{is_enabled});
 }
 
 sub is_valid_username {
@@ -74,15 +124,15 @@ sub is_valid_username {
         @_,
     );
 
-    my $sth = $self->dbh()->prepare_cached(q|
-        SELECT COUNT(*) FROM users WHERE username = LOWER(?) AND is_enabled = 1
-    |);
-    $sth->execute($args{username});
-    my ($count) = $sth->fetchrow();
-    $sth->finish();
+    my $username = $args{username};
+    die "No username given." unless defined($username);
 
-    return 1 if ($count > 0);
-    return 0;
+    $username =~ s/^\s+|\s+$//g;
+    die "No username given." unless length($username);
+
+    load($self->{module});
+    my $obj = $self->{module}->new(dbh => $self->{dbh});
+    return $obj->is_valid_username(username => $username);
 }
 
 sub is_valid_password {
@@ -93,15 +143,19 @@ sub is_valid_password {
         @_,
     );
 
-     my $sth = $self->dbh()->prepare_cached(q|
-         SELECT COUNT(*) FROM users WHERE username = LOWER(?) AND password = MD5(?) AND is_enabled = 1
-     |);
-     $sth->execute($args{username}, $args{password});
-     my ($count) = $sth->fetchrow();
-     $sth->finish();
+    my $username = $args{username};
+    my $password = $args{password};
+    die "No username given." unless defined($username);
+    die "No password given." unless defined($password);
 
-     return 1 if ($count > 0);
-     return 0;
+    $username =~ s/^\s+|\s+$//g;
+    $password =~ s/^\s+|\s+$//g;
+    die "No username given." unless length($username);
+    die "No password given." unless length($password);
+
+    load($self->{module});
+    my $obj = $self->{module}->new(dbh => $self->{dbh});
+    return $obj->is_valid_password(username => $username, password => $password);
 }
 
 sub is_logged_in {
@@ -124,20 +178,22 @@ sub is_logged_in {
         my $secret = $pieces->{secret};
 
         my $sth = $self->dbh()->prepare_cached(q|
-            SELECT COUNT(*) FROM autologin WHERE secret = ? AND user_id IN (
-                SELECT user_id FROM users WHERE username = LOWER(?) AND is_enabled = 1
-            )
+            SELECT u.id, u.username
+            FROM autologin a, users u
+            WHERE u.id = a.user_id AND a.secret = ? AND u.username = LOWER(?) AND u.is_enabled = 1
         |);
         $sth->execute($secret, $username);
-        ($logged_in_flag) = $sth->fetchrow();
+        if (my ($user_id, $username) = $sth->fetchrow()) {
+            $self->{session}->set('authorized', 1);
+            $self->{session}->set('user_id', $user_id);
+            $self->{session}->set('username', $username);
+            $logged_in_flag = 1;
+        }
         $sth->finish();
-
-        # set a session user name
-        $self->{session}->set('username', $username) if $logged_in_flag;
     }
 
     # if the session username exists then the user is logged in
-    if ($self->{session}->get('username')) {
+    if ($self->{session}->get('authorized')) {
         $logged_in_flag = 1;
     }
 
@@ -160,36 +216,11 @@ sub is_trusted {
             SELECT id FROM users WHERE username = LOWER(?) AND is_enabled = 1
         )
     |);
-    $sth->execute($args{realm}, $self->get_username());
+    $sth->execute($args{realm}, $self->{session}->get('username'));
     my ($trusted) = $sth->fetchrow();
     $sth->finish();
 
     return $trusted;
-}
-
-sub get_username {
-    my $self = shift;
-    return $self->{session}->get('username');
-}
-
-sub get_user_id {
-    my $self = shift;
-    my %args = (
-        username => undef,
-        @_,
-    );
-
-    my $id = undef;
-    my $sth = $self->dbh()->prepare_cached(q|
-        SELECT id FROM users WHERE username = LOWER(?)
-    |);
-    $sth->execute($args{username});
-    if (($id) = $sth->fetchrow()) {
-        # nothing to do, successful
-    }
-    $sth->finish();
-
-    return $id;
 }
 
 sub get_trusted_id {
@@ -205,7 +236,7 @@ sub get_trusted_id {
             SELECT user_id FROM users WHERE username = LOWER(?)
         )
     |);
-    $sth->execute($args{realm}, $self->get_username());
+    $sth->execute($args{realm}, $self->{session}->get('username'));
     if (($id) = $sth->fetchrow()) {
         # nothing to do, successful
     }
@@ -222,7 +253,7 @@ sub get_server {
         endpoint_url => 'http://' . $self->{config}->{url} . '/openid/service',
         setup_url    => 'http://' . $self->{config}->{url} . '/openid/service/setup',
         get_user => sub {
-            return $self->get_username();
+            return $self->{session}->get('username');
         },
         is_identity => sub {
             my ($username, $identity) = @_;

@@ -65,8 +65,8 @@ sub get_service {
 
             eval {
                 my $realm = $params->{'openid.realm'};
-                my $username = $engine->get_username();
-                my $user_id = $engine->get_user_id(username => $username);
+                my $username = $session->get('username');
+                my $user_id = $session->get('user_id');
                 my $trusted_id = $engine->get_trusted_id(realm => $realm);
 
                 my $log_sth = $dbh->prepare(q|
@@ -109,9 +109,16 @@ sub get_service {
             return Apache2::Const::REDIRECT;
         }
 
+        # something isn't trusted, send to the setup url
         if ($type eq "setup") {
             my $location = $openid->setup_url;
             $location .= '?' . join ('&', map { $_ . '=' . uri_escape(defined $data->{$_} ? $data->{$_} : '') } keys %{$data});
+
+            # add sreg parameters to the url
+            foreach my $key (keys %{$params}) {
+                next unless $key =~ m/^openid\.(sreg\..*)/;
+                $location .= "&${1}=" . uri_escape(defined $params->{$key} ? $params->{$key} : '');
+            }
 
             $r->headers_out->set(Location => $location);
             $r->status(Apache2::Const::REDIRECT);
