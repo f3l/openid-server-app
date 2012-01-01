@@ -69,7 +69,7 @@ as "http://id.example.com". This is because it will take over that host and
 disallow you from running other things on it.
 
 Configuring Apache is simple. Just take a look at the configuration example
-for Apache under configuration/httd.conf. Change the contents of that file as
+for Apache under configuration/httpd.conf. Change the contents of that file as
 appropriate and copy its contents to your Apache configuration files.
 
 
