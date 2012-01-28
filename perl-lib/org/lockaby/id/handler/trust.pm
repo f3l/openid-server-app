@@ -286,22 +286,7 @@ sub get_trust {
             </div>
         </form>
         <script type="text/javascript">
-            jQuery(window).resize(function (event) {
-                var margin_top = parseInt((jQuery(window).height() - jQuery('#content').outerHeight()) / 2);
-                if (margin_top < 4) margin_top = 4;
-
-                var margin_left = parseInt((jQuery(window).width() - jQuery('#content').outerWidth()) / 2);
-                if (margin_left < 0) margin_left = 0;
-
-                jQuery('#content').css({
-                    'position': 'absolute',
-                    'marginTop': margin_top,
-                    'marginLeft': margin_left
-                });
-            });
-
             jQuery(document).ready(function() {
-                jQuery(window).trigger('resize');
                 jQuery('#login').closest('form').submit(function (event) {
                     openid.events.trust(event, this);
                 });

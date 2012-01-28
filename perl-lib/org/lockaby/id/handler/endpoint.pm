@@ -117,7 +117,7 @@ sub _get_user {
     $self->{engine}->r()->headers_out->set('X-XRDS-Location', 'http://' . $self->{config}->{url} . "/" . $args{username} . '?format=xrds');
     $self->{engine}->r()->print($t->get_header());
     $self->{engine}->r()->print(qq|
-        This is the OpenID endpoint for <b>${\$args{username}}</b> on <b>${\$self->{config}->{url}}</b>.
+        <center>This is the OpenID endpoint for <b>${\$args{username}}</b> at <b>${\$self->{config}->{url}}</b>.</center>
     |);
     $self->{engine}->r()->print($t->get_footer());
 

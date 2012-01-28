@@ -206,26 +206,32 @@ sub get_login {
     $r->content_type('text/html; charset=utf-8');
     print $t->get_header();
     print qq|
-        <form autocomplete="off" method="POST">
-            <div id="title">
+        <form autocomplete="off" method="POST" id="homepage">
+            <div class="title">
                 ${\$config->{url}}
             </div>
             <div id="login">
                 <!-- show an errors from the login process -->
-                <div class="error">${\join("<br/>", @errors)}</div>
+                <div class="errors">
+                    ${\join("<br/>", @errors)}
+                </div>
 
                 <div class="boxes">
-                    <div class="label">username:</div>
-                    <div class="input">
-                        <input type="text" name="username" value=""/>
+                    <div class="box">
+                        <div class="label">username:</div>
+                        <div class="input">
+                            <input type="text" name="username" value="" autocorrect="off" autocapitalize="off"/>
+                        </div>
+                        <div style="clear: both;"></div>
                     </div>
-                    <div style="clear: both;"></div>
 
-                    <div class="label">password:</div>
-                    <div class="input">
-                        <input type="password" name="password" value=""/>
+                    <div class="box">
+                        <div class="label">password:</div>
+                        <div class="input">
+                            <input type="password" name="password" value=""/>
+                        </div>
+                        <div style="clear: both;"></div>
                     </div>
-                    <div style="clear: both;"></div>
                 </div>
 
                 <div style="text-align: center;">
@@ -242,26 +248,20 @@ sub get_login {
             </div>
         </form>
         <script type="text/javascript">
-            jQuery(window).resize(function (event) {
-                var margin_top = parseInt((jQuery(window).height() - jQuery('#content').outerHeight()) / 2);
-                if (margin_top < 4) margin_top = 4;
-
-                var margin_left = parseInt((jQuery(window).width() - jQuery('#content').outerWidth()) / 2);
-                if (margin_left < 0) margin_left = 0;
-
-                jQuery('#content').css({
-                    'position': 'absolute',
-                    'marginTop': margin_top,
-                    'marginLeft': margin_left
-                });
-            });
-
             jQuery(document).ready(function() {
+                // focus on the username first
                 jQuery('#login input[name="username"]').focus();
-                jQuery(window).trigger('resize');
+
+                // when the user submits send it through this handler
                 jQuery('#login').closest('form').submit(function (event) {
                     openid.events.login(event, this);
                 });
+
+                // check to see if the session cookie stuck
+                if (!jQuery.cookie('OPENID_SESSION')) {
+                    console.log('cookies are not enabled');
+                    jQuery('#login div.errors').append('<br/>Cookies must be enabled.');
+                }
             });
         </script>
     |;

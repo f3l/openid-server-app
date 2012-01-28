@@ -1,7 +1,14 @@
+@media screen and (max-device-width: 480px){
+  body{
+    -webkit-text-size-adjust: none;
+  }
+}
+
 BODY {
     background-color: #ffffff;
     color: #000000;
-    font: 12px verdana,sans-serif;
+    font-size: 1em;
+    font-family: verdana,sans-serif;
     margin: 0px auto;
     width: 100%;
 }
@@ -28,23 +35,36 @@ HR {
     margin: 1px 0px 4px 0px;
 }
 
+#homepage {
+    margin-top: 30px;
+}
+
+#homepage > div.title {
+    margin: 0px auto;
+    text-align: center;
+    font-size: 2em;
+    font-weight: bold;
+    font-family: verdana,sans-serif;
+}
+
 #content {
+    font-size: 0.72em;
     padding: 0px;
     margin: 10px auto;
-    width: 610px;
+    width: 100%;
+    height: 100%;
 }
 
 #title {
     text-align: center;
     font-weight: bold;
-    font-size: 24px;
+    font-size: 2.25em;
     font-family: sans-serif;
+    width: 530px;
     margin: 0px auto 10px auto;
-    width: 350px;
 }
 
 #login {
-    width: 400px;
     margin: 0px auto;
 }
 
@@ -59,7 +79,7 @@ HR {
     text-align: left;
 }
 
-#login .error {
+#login div.errors {
     text-align: center;
     color: red;
     font-weight: bold;
@@ -67,15 +87,19 @@ HR {
 }
 
 #login div.boxes {
-    width: 215px;
     margin: 0px auto;
+}
+
+#login div.box {
+    margin: 0px auto;
+    width: 225px;
 }
 
 #login .label {
     float: left;
     text-align: right;
     width: 65px;
-    margin: 2px 0px;
+    margin: 5px 0px 2px 0px;
     padding: 0px 2px;
 }
 
@@ -100,7 +124,7 @@ HR {
 }
 
 #header {
-    width: 610px;
+    width: 530px;
     margin: 0px auto;
     padding: 2px;
 }
@@ -119,20 +143,24 @@ HR {
 }   
     
 #tabs {
-    width: 612px;
+    width: 532px;
     margin: 0px auto;
     padding: 0px;
     background: white;
 }
 
+#tabs > ul {
+    font-size: 1em;
+}
+
 #management {
-    font-size: 12px;
-    margin-bottom: 0px;
-    padding-bottom: 0px;
+    margin: 0px;
+    padding: 4px;
+    font-size: 0.95em;
 }
 
 #management div.header {
-    width: 500px;
+    width: 470px;
     margin: 2px auto;
     font-weight: bold;
     background: #cccccc;
@@ -140,7 +168,7 @@ HR {
 }
 
 #management div.row {
-    width:  500px;
+    width: 470px;
     margin: 0px auto 8px auto;
 }
 
@@ -150,7 +178,7 @@ HR {
 }
 
 #management div.header > div.is, #management div.row div.is {
-    width: 100px;
+    width: 90px;
     text-align: center;
     float: right;
 }
@@ -160,7 +188,7 @@ HR {
 }
 
 #management div.row > div.user {
-    width: 297px;
+    width: 290px;
 }
 
 #management div.row > div.user > div.username {
@@ -175,8 +203,12 @@ HR {
     clear: both;
 }
 
+#management input[type="submit"] {
+    margin: 4px 4px 15px 4px;
+    width: 55px;
+}
+
 div.change {
-    font-size: 12px;
     margin: 0px auto;
 }
 
@@ -190,7 +222,7 @@ div.change > div.username > span.username {
 }
 
 div.change > div.label {
-    width: 120px;
+    width: 95px;
     font-weight: bold;
     text-align: right;
     float: left;
@@ -213,7 +245,7 @@ div.change > div.clear {
 }
 
 #management div.row > div.user > div.label {
-    width: 120px;
+    width: 95px;
     font-weight: bold;
     text-align: right;
     float: left;
@@ -233,18 +265,12 @@ div.change > div.clear {
 
 #profile {
     margin: 0px;
-    padding: 0px;
-    font-size: 12px;
-}
-
-#profile div.introduction {
-    margin: 4px auto 10px auto;
-    text-align: center;
-    width: 400px;
+    padding: 4px;
+    font-size: 0.95em;
 }
 
 #profile div.row {
-    width: 480px;
+    width: 450px;
     margin: 0px auto 8px auto;
 }
 
@@ -271,24 +297,20 @@ div.change > div.clear {
 }
 
 #profile input[type="submit"] {
-    font-size: 10px;
     margin: 4px 4px 15px 4px;
-    width: 45px;
+    width: 55px;
 }
 
 #trusted {
     margin: 0px;
     padding: 4px;
-    font-size: 12px;
-}
-
-#trusted div.introduction {
-    margin: 4px 0px;
-    text-align: center;
+    font-size: 0.95em;
 }
 
 #trusted div.select {
     padding: 0px 0px 2px 2px;
+    text-align: left;
+    font-size: 0.9em;
 }
 
 #trusted div.empty {
@@ -297,9 +319,8 @@ div.change > div.clear {
 }
 
 #trusted input[type="submit"] {
-    font-size: 10px;
     margin: 4px 4px 15px 4px;
-    width: 60px;
+    width: 70px;
 }
 
 #trusted div.header {
@@ -337,5 +358,12 @@ div.change > div.clear {
 
 #trusted div.clear {
     clear: both;
+}
+
+div.introduction {
+    padding: 0px;
+    margin: 0px 2px 10px 2px;
+    text-align: left;
+    font-size: 0.9em;
 }
 

@@ -400,7 +400,7 @@ sub get_profile {
                         <div class="user">
                             <div class="label">Username:</div>
                             <div class="value">
-                                <input type="text" name="username" value=""/>
+                                <input type="text" name="username" value="" autocorrect="off" autocapitalize="off"/>
                             </div>
                             <div class="clear"></div>
 
@@ -455,6 +455,9 @@ sub get_profile {
 
         $management_tab_content = qq|
             <div id="management">
+                <div class="introduction">
+                    Add new users or clear caches. Whatever you want!
+                </div>
                 <ul>
                     <li>
                         <a href="javascript:openid.management.clear('sessions');">Clear all sessions.</a>
@@ -565,6 +568,7 @@ sub get_profile {
                         Select: <a href="javascript:void(0);" onclick="openid.trusted.select(this, 'all');">all</a> \|
                                 <a href="javascript:void(0);" onclick="openid.trusted.select(this, 'none');">none</a>
                     </div>
+
                     <div class="header">
                         <div class="name">Site</div>
                         <div class="clear"></div>
@@ -575,15 +579,13 @@ sub get_profile {
             <div id="profile">
                 <form autocomplete="off" method="POST">
                     <div class="introduction">
-                        These fields will be sent to sites when you log in. For more details, read about the
-                        <a href="http://openid.net/specs/openid-simple-registration-extension-1_0.html">OpenID
-                        Simple Registration Extension</a>.
+                        These fields will be sent to sites when you log in, if you authorize it.
                     </div>
 
                     <div class="row">
                         <div class="label">Email Address:</div>
                         <div class="value">
-                            <input type="text" value="${\((defined($email_address) ? $email_address : ""))}" name="email_address"/>
+                            <input type="text" value="${\((defined($email_address) ? $email_address : ""))}" name="email_address" autocapitalize="off" autocorrect="off"/>
                         </div>
                         <div class="clear"></div>
                     </div>

@@ -65,7 +65,8 @@ sub new {
         $args{r},
         -name => org::lockaby::id::COOKIE_NAME_SESSION,
         -value => $self->{_id},
-        -httponly => 1,
+        -httponly => 0, # needs to be readable by javascript so that we can check for cookie functionality
+        -secure => 1,
         -path => '/',
     );
     $session_cookie_jar->bake($args{r});
