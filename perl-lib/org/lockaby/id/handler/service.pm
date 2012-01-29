@@ -56,6 +56,13 @@ sub get_service {
     if ($action eq "endpoint") {
         my ($type, $data) = $openid->handle_page();
 
+        if (!defined($type)) {
+            $r->content_type("text/plain; charset=utf-8");
+            $r->status(Apache2::Const::SERVER_ERROR);
+            print "The trust root and source root do not match.";
+            return Apache2::Const::SERVER_ERROR;
+        }
+
         if ($type eq "redirect") {
             # the user and the realm are trusted
             # log it and redirect
