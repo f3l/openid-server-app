@@ -60,3 +60,12 @@ CREATE TABLE `log` (
   CONSTRAINT `log_user_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+DELIMITER //
+CREATE FUNCTION upsert_trusted (new_user_id int(32) unsigned, new_realm varchar(128))
+RETURNS int(1)
+BEGIN
+    INSERT IGNORE INTO trusted (user_id, realm, authorized, created, logged)
+                        VALUES (new_user_id, new_realm, 1, NOW(), NOW());
+    RETURN 0;
+END//
+DELIMITER ;

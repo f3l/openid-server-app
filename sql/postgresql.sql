@@ -92,3 +92,14 @@ CREATE OR REPLACE FUNCTION set_primary_key() RETURNS TRIGGER  AS '
 CREATE TRIGGER users_bifer_trigger BEFORE INSERT ON users FOR EACH ROW EXECUTE PROCEDURE set_primary_key();
 CREATE TRIGGER trusted_bifer_trigger BEFORE INSERT ON trusted FOR EACH ROW EXECUTE PROCEDURE set_primary_key();
 
+CREATE OR REPLACE FUNCTION insert_trusted(new_user_id integer, new_realm varchar(128))
+RETURNS void
+AS '
+    BEGIN
+        INSERT INTO trusted (user_id, realm, authorized, created, logged)
+                     VALUES (new_user_id, new_realm, 1, NOW(), NOW());
+    EXCEPTION WHEN unique_violation THEN
+        NULL;
+    END;
+' LANGUAGE plpgsql;
+

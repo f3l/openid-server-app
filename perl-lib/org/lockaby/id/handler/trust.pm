@@ -113,9 +113,10 @@ sub get_trust {
             # get the user id to be used in sql statements more easily
             my $user_id = $session->get('user_id');
 
+            # this will insert a new row into the trusted table
+            # but only if a row doesn't already exist
             my $save_sth = $dbh->prepare_cached(q|
-                INSERT IGNORE INTO trusted (user_id, realm, authorized, created, logged)
-                                    VALUES (?, ?, 1, NOW(), NOW())
+                SELECT upsert_trusted(?, ?);
             |);
             $save_sth->execute($user_id, $realm);
             $save_sth->finish();
