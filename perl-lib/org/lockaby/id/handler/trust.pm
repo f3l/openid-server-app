@@ -116,7 +116,7 @@ sub get_trust {
             # this will insert a new row into the trusted table
             # but only if a row doesn't already exist
             my $save_sth = $dbh->prepare_cached(q|
-                SELECT upsert_trusted(?, ?);
+                SELECT insert_trusted(?, ?);
             |);
             $save_sth->execute($user_id, $realm);
             $save_sth->finish();

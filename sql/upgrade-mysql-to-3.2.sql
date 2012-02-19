@@ -1,5 +1,5 @@
 DELIMITER //
-CREATE FUNCTION upsert_trusted (new_user_id int(32) unsigned, new_realm varchar(128))
+CREATE FUNCTION insert_trusted (new_user_id int(32) unsigned, new_realm varchar(128))
 RETURNS int(1)
 BEGIN
     INSERT IGNORE INTO trusted (user_id, realm, authorized, created, logged)
