@@ -1,5 +1,5 @@
 CREATE TABLE users (
-  id integer NOT NULL,
+  id SERIAL NOT NULL,
   username varchar(128) NOT NULL,
   password varchar(128) DEFAULT NULL,
   email_address varchar(128) DEFAULT NULL,
@@ -40,7 +40,7 @@ ALTER TABLE autologin ADD CONSTRAINT autologin_user_fk FOREIGN KEY (user_id) REF
 CREATE INDEX autologin_user_id_idx ON autologin (user_id);
 
 CREATE TABLE trusted (
-  id integer NOT NULL,
+  id SERIAL NOT NULL,
   user_id integer NOT NULL,
   realm varchar(128) NOT NULL,
   authorized smallint NOT NULL DEFAULT '0',
@@ -66,31 +66,7 @@ ALTER TABLE log ADD CONSTRAINT log_user_fk FOREIGN KEY (user_id) REFERENCES user
 CREATE INDEX log_trusted_id_idx ON log (trusted_id);
 CREATE INDEX log_user_id_idx ON log (user_id);
 
-CREATE SEQUENCE users_id_seq INCREMENT BY 1 MINVALUE 1 NO MAXVALUE CACHE 1;
-CREATE SEQUENCE trusted_id_seq INCREMENT BY 1 MINVALUE 1 NO MAXVALUE CACHE 1;
-
 CREATE LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION set_primary_key() RETURNS TRIGGER  AS '
-    DECLARE
-        new_id INTEGER;
-        new_id_counter INTEGER := 0;
-    BEGIN
-        IF new.id IS NULL THEN
-            LOOP
-                SELECT nextval(tg_relname||''_id_seq'') INTO new_id;
-                SELECT COUNT(*) INTO new_id_counter FROM users WHERE id = new_id;
-                EXIT WHEN new_id_counter = 0;
-            END LOOP;
-
-            new.id = new_id;
-        END IF;
-        RETURN new;
-    END;
-' LANGUAGE plpgsql;
-
-CREATE TRIGGER users_bifer_trigger BEFORE INSERT ON users FOR EACH ROW EXECUTE PROCEDURE set_primary_key();
-CREATE TRIGGER trusted_bifer_trigger BEFORE INSERT ON trusted FOR EACH ROW EXECUTE PROCEDURE set_primary_key();
 
 CREATE OR REPLACE FUNCTION insert_trusted(new_user_id integer, new_realm varchar(128))
 RETURNS void
