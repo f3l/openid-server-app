@@ -6,6 +6,7 @@ use warnings;
 use utf8;
 
 use Apache2::Const qw(:common);
+use Apache2::RequestIO ();
 
 sub new {
     my $class = shift;
